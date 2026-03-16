@@ -11,7 +11,7 @@
         "@nuxt/kit": "^4.4.2",
         "@nuxt/schema": "^4.4.2",
         "@types/node": "^25.5.0",
-        "bumpp": "^11.0.0",
+        "bumpp": "^11.0.1",
         "eslint": "^10.0.3",
         "nodemon": "^3.1.14",
         "rollup": "^4.59.0",
@@ -785,7 +785,7 @@
 
     "builtin-modules": ["builtin-modules@5.0.0", "https://repo.huaweicloud.com/repository/npm/builtin-modules/-/builtin-modules-5.0.0.tgz", {}, "sha512-bkXY9WsVpY7CvMhKSR6pZilZu9Ln5WDrKVBUXf2S443etkmEO4V58heTecXcUIsNsi4Rx8JUO4NfX1IcQl4deg=="],
 
-    "bumpp": ["bumpp@11.0.0", "https://repo.huaweicloud.com/repository/npm/bumpp/-/bumpp-11.0.0.tgz", { "dependencies": { "args-tokenizer": "^0.3.0", "cac": "^7.0.0", "jsonc-parser": "^3.3.1", "package-manager-detector": "^1.6.0", "semver": "^7.7.4", "tinyexec": "^1.0.4", "tinyglobby": "^0.2.15", "unconfig": "^7.5.0", "yaml": "^2.8.2" }, "bin": { "bumpp": "bin/bumpp.mjs" } }, "sha512-rxW8H4VIB+KvnNDZ87y4tyktHydN4wzmXHYJ8CfzhWl8yKd6yuQMPcV78Hrz47udmBssjrN5wQo+JLmyU94gaA=="],
+    "bumpp": ["bumpp@11.0.1", "https://mirrors.tencent.com/npm/bumpp/-/bumpp-11.0.1.tgz", { "dependencies": { "args-tokenizer": "^0.3.0", "cac": "^7.0.0", "jsonc-parser": "^3.3.1", "package-manager-detector": "^1.6.0", "semver": "^7.7.4", "tinyexec": "^1.0.4", "tinyglobby": "^0.2.15", "unconfig": "^7.5.0", "yaml": "^2.8.2" }, "bin": { "bumpp": "bin/bumpp.mjs" } }, "sha512-X0ti27I/ewsx/u0EJSyl0IZWWOE95q+wIpAG/60kc5gqMNR4a23YJdd3lL7JsBN11TgLbCM4KpfGMuFfdigb4g=="],
 
     "bundle-name": ["bundle-name@4.1.0", "https://repo.huaweicloud.com/repository/npm/bundle-name/-/bundle-name-4.1.0.tgz", { "dependencies": { "run-applescript": "^7.0.0" } }, "sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q=="],
 
@@ -2151,7 +2151,7 @@
 
     "oxc-parser/@oxc-project/types": ["@oxc-project/types@0.117.0", "https://repo.huaweicloud.com/repository/npm/@oxc-project/types/-/types-0.117.0.tgz", {}, "sha512-C/kPXBphID44fXdsa2xSOCuzX8fKZiFxPsvucJ6Yfkr6CJlMA+kNLPNKyLoI+l9XlDsNxBrz6h7IIjKU8pB69w=="],
 
-    "playground-nuxt/unplugin-starter": ["unplugin-starter@file:", { "dependencies": { "unplugin": "^3.0.0" }, "devDependencies": { "@antfu/eslint-config": "^7.7.2", "@nuxt/kit": "^4.4.2", "@nuxt/schema": "^4.4.2", "@types/node": "^25.5.0", "bumpp": "^11.0.0", "eslint": "^10.0.3", "nodemon": "^3.1.14", "rollup": "^4.59.0", "tsdown": "^0.21.3", "tsx": "^4.21.0", "typescript": "^5.9.3", "vite": "^8.0.0", "vitest": "^4.1.0", "webpack": "^5.105.4" }, "peerDependencies": { "@farmfe/core": ">=1", "@nuxt/kit": "^3", "@nuxt/schema": "^3", "esbuild": "*", "rollup": "^3", "vite": ">=3", "webpack": "^4 || ^5" }, "optionalPeers": ["@farmfe/core", "@nuxt/kit", "@nuxt/schema", "esbuild", "rollup", "vite", "webpack"] }],
+    "playground-nuxt/unplugin-starter": ["unplugin-starter@file:", { "dependencies": { "unplugin": "^3.0.0" }, "devDependencies": { "@antfu/eslint-config": "^7.7.2", "@nuxt/kit": "^4.4.2", "@nuxt/schema": "^4.4.2", "@types/node": "^25.5.0", "bumpp": "^11.0.1", "eslint": "^10.0.3", "nodemon": "^3.1.14", "rollup": "^4.59.0", "tsdown": "^0.21.3", "tsx": "^4.21.0", "typescript": "^5.9.3", "vite": "^8.0.0", "vitest": "^4.1.0", "webpack": "^5.105.4" }, "peerDependencies": { "@farmfe/core": ">=1", "@nuxt/kit": "^3", "@nuxt/schema": "^3", "esbuild": "*", "rollup": "^3", "vite": ">=3", "webpack": "^4 || ^5" }, "optionalPeers": ["@farmfe/core", "@nuxt/kit", "@nuxt/schema", "esbuild", "rollup", "vite", "webpack"] }],
 
     "playground-vite/vite": ["vite@6.4.1", "https://repo.huaweicloud.com/repository/npm/vite/-/vite-6.4.1.tgz", { "dependencies": { "esbuild": "^0.25.0", "fdir": "^6.4.4", "picomatch": "^4.0.2", "postcss": "^8.5.3", "rollup": "^4.34.9", "tinyglobby": "^0.2.13" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^18.0.0 || ^20.0.0 || >=22.0.0", "jiti": ">=1.21.0", "less": "*", "lightningcss": "^1.21.0", "sass": "*", "sass-embedded": "*", "stylus": "*", "sugarss": "*", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-+Oxm7q9hDoLMyJOYfUYBuHQo+dkAloi33apOPP56pzj+vsdJDzr+j1NISE5pyaAuKL4A3UD34qd0lx5+kfKp2g=="],
 

@@ -100,7 +100,7 @@
     "@nuxt/kit": "^4.4.2",
     "@nuxt/schema": "^4.4.2",
     "@types/node": "^25.5.0",
-    "bumpp": "^11.0.0",
+    "bumpp": "^11.0.1",
     "eslint": "^10.0.3",
     "nodemon": "^3.1.14",
     "rollup": "^4.59.0",

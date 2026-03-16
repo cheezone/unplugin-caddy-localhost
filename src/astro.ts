@@ -1,6 +1,6 @@
 import type { Options } from './types'
-import { PLUGIN_NAME } from './constants'
 import unplugin from '.'
+import { PLUGIN_NAME } from './constants'
 
 export default (options: Options): any => ({
   name: PLUGIN_NAME,
