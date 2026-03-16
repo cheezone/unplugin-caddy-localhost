@@ -1,0 +1,114 @@
+{
+  "name": "unplugin-starter",
+  "type": "module",
+  "version": "0.1.0",
+  "workspaces": [
+    "playground/*"
+  ],
+  "description": "",
+  "license": "MIT",
+  "homepage": "https://github.com/cheezone/unplugin-starter#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cheezone/unplugin-starter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cheezone/unplugin-starter/issues"
+  },
+  "keywords": [
+    "unplugin",
+    "vite",
+    "webpack",
+    "rollup",
+    "transform"
+  ],
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./astro": "./dist/astro.mjs",
+    "./esbuild": "./dist/esbuild.mjs",
+    "./farm": "./dist/farm.mjs",
+    "./nuxt": "./dist/nuxt.mjs",
+    "./rollup": "./dist/rollup.mjs",
+    "./rspack": "./dist/rspack.mjs",
+    "./types": "./dist/types.mjs",
+    "./vite": "./dist/vite.mjs",
+    "./webpack": "./dist/webpack.mjs",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown -w",
+    "lint": "eslint .",
+    "play:nuxt": "bun run --cwd playground/nuxt dev",
+    "play:vite": "bun run --cwd playground/vite dev",
+    "prepublishOnly": "bun run build",
+    "release": "bumpp && bun publish",
+    "start": "tsx src/index.ts",
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "@farmfe/core": ">=1",
+    "@nuxt/kit": "^3",
+    "@nuxt/schema": "^3",
+    "esbuild": "*",
+    "rollup": "^3",
+    "vite": ">=3",
+    "webpack": "^4 || ^5"
+  },
+  "peerDependenciesMeta": {
+    "@farmfe/core": {
+      "optional": true
+    },
+    "@nuxt/kit": {
+      "optional": true
+    },
+    "@nuxt/schema": {
+      "optional": true
+    },
+    "esbuild": {
+      "optional": true
+    },
+    "rollup": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "unplugin": "^3.0.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^7.7.2",
+    "@nuxt/kit": "^4.4.2",
+    "@nuxt/schema": "^4.4.2",
+    "@types/node": "^25.5.0",
+    "bumpp": "^11.0.0",
+    "eslint": "^10.0.3",
+    "nodemon": "^3.1.14",
+    "rollup": "^4.59.0",
+    "tsdown": "^0.21.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0",
+    "webpack": "^5.105.4"
+  }
+}
