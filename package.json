@@ -49,9 +49,6 @@
   "files": [
     "dist"
   ],
-  "simple-git-hooks": {
-    "pre-commit": "bun run lint -- --fix"
-  },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown -w",
@@ -116,5 +113,8 @@
     "vite": "^8.0.0",
     "vitest": "^4.1.0",
     "webpack": "^5.105.4"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "bun run lint -- --fix"
   }
 }
