@@ -5,6 +5,5 @@ export default defineNuxtConfig({
   devServer: {
     port: env.PORT ? Number(env.PORT) : 3000,
   },
-  modules: ['../../dist/nuxt.mjs'],
-  unpluginCaddyLocalhost: { host: 'frontend.localhost' },
+  modules: [['../../dist/nuxt.mjs', { host: 'frontend.localhost' }]],
 })
