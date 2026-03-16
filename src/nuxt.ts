@@ -2,10 +2,10 @@ import type { Nuxt } from '@nuxt/schema'
 import type { Options } from './types'
 import { defineNuxtModule } from '@nuxt/kit'
 import {
+  assertLocalhostHost,
   CADDY_ADMIN,
   DEV_LOCK_POLL_MS,
   DEV_LOCK_TIMEOUT_MS,
-  assertLocalhostHost,
   dialFromConfigNoHttpServer,
   ensureCaddyServer,
   readDevLockPort,
@@ -14,6 +14,8 @@ import {
   waitForCaddy,
 } from './caddy'
 import { NUXT_CONFIG_KEY, NUXT_MODULE_NAME } from './constants'
+
+const TRAILING_SLASH_REGEX = /\/+$/
 
 export interface ModuleOptions extends Options {}
 
@@ -29,17 +31,21 @@ interface LoggerShape {
 }
 
 function getDevServerFromOptions(options: Nuxt['options']): DevServerShape | undefined {
-  if (!options || typeof options !== 'object' || !('devServer' in options)) return undefined
+  if (!options || typeof options !== 'object' || !('devServer' in options))
+    return undefined
   const d = (options as { devServer?: DevServerShape }).devServer
   return d
 }
 
 function getLoggerFromNuxt(nuxt: Nuxt): LoggerShape | undefined {
-  if (typeof nuxt !== 'object' || nuxt === null || !('logger' in nuxt)) return undefined
+  if (typeof nuxt !== 'object' || nuxt === null || !('logger' in nuxt))
+    return undefined
   const l = (nuxt as Record<string, unknown>).logger
-  if (!l || typeof l !== 'object') return undefined
+  if (!l || typeof l !== 'object')
+    return undefined
   const lo = l as Record<string, unknown>
-  if (typeof lo.info !== 'function' || typeof lo.warn !== 'function') return undefined
+  if (typeof lo.info !== 'function' || typeof lo.warn !== 'function')
+    return undefined
   return {
     info: (msg: string) => { (lo.info as (m: string) => void)(msg) },
     warn: (msg: string) => { (lo.warn as (m: string) => void)(msg) },
@@ -48,14 +54,17 @@ function getLoggerFromNuxt(nuxt: Nuxt): LoggerShape | undefined {
 
 /** 从 listen 的 listener 形参推导 upstream dial，无则返回 null */
 function dialFromListenListener(listener: unknown): string | null {
-  if (listener === null || typeof listener !== 'object') return null
+  if (listener === null || typeof listener !== 'object')
+    return null
   const l = listener as Record<string, unknown>
 
   const fromAddress = (): string | null => {
     const addr = l.address
-    if (!addr || typeof addr !== 'object' || typeof (addr as { port?: unknown }).port !== 'number') return null
-    const { port, address } = addr as { port: number; address?: string }
-    if (port <= 0 || port > 65535) return null
+    if (!addr || typeof addr !== 'object' || typeof (addr as { port?: unknown }).port !== 'number')
+      return null
+    const { port, address } = addr as { port: number, address?: string }
+    if (port <= 0 || port > 65535)
+      return null
     const host = address && address !== '::' && address !== '0.0.0.0' ? address : '127.0.0.1'
     const h = host.includes(':') ? `[${host}]` : host
     return `${h}:${port}`
@@ -63,11 +72,13 @@ function dialFromListenListener(listener: unknown): string | null {
 
   const fromUrl = (): string | null => {
     const url = typeof l.url === 'string' ? l.url : Array.isArray(l.urls) && typeof l.urls[0] === 'string' ? l.urls[0] : undefined
-    if (!url) return null
+    if (!url)
+      return null
     try {
       const u = new URL(url.startsWith('http') ? url : `http://${url}`)
       const port = Number(u.port || '0')
-      if (!port || port <= 0 || port > 65535) return null
+      if (!port || port <= 0 || port > 65535)
+        return null
       const host = u.hostname && u.hostname !== '::' && u.hostname !== '0.0.0.0' ? u.hostname : '127.0.0.1'
       const h = host.includes(':') ? `[${host}]` : host
       return `${h}:${port}`
@@ -97,10 +108,11 @@ export default defineNuxtModule<ModuleOptions>({
 
     assertLocalhostHost(options.host)
 
-    const caddyAdmin = (options.caddyAdmin ?? CADDY_ADMIN).replace(/\/+$/, '')
+    const caddyAdmin = (options.caddyAdmin ?? CADDY_ADMIN).replace(TRAILING_SLASH_REGEX, '')
 
     const ensureCaddyReady = async (): Promise<boolean> => {
-      if (await waitForCaddy(caddyAdmin)) return true
+      if (await waitForCaddy(caddyAdmin))
+        return true
       if (options.autoStartCaddy !== false) {
         await startCaddyInBackground({ logger })
         return waitForCaddy(caddyAdmin, {

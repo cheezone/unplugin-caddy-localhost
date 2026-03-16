@@ -3,26 +3,26 @@
  * 使 https://<host>.localhost 反向代理到本机端口。
  */
 import type { UnpluginFactory } from 'unplugin'
-import { createUnplugin } from 'unplugin'
 import type { Options } from './types'
-import { PLUGIN_NAME } from './constants'
+import process from 'node:process'
+import pc from 'picocolors'
+import { createUnplugin } from 'unplugin'
 import {
   assertLocalhostHost,
   CADDY_ADMIN,
+  DEV_LOCK_POLL_MS,
+  DEV_LOCK_TIMEOUT_MS,
+  dialFromConfigNoHttpServer,
   ensureCaddyServer,
   isCaddyReachable,
-  DEV_LOCK_FILE,
-  DEV_LOCK_TIMEOUT_MS,
-  DEV_LOCK_POLL_MS,
+  readDevLockPort,
   removeRouteForHost,
   setRouteForHost,
   startCaddyInBackground,
-  waitForCaddy,
   toUpstreamDial,
-  readDevLockPort,
-  dialFromConfigNoHttpServer,
+  waitForCaddy,
 } from './caddy'
-import pc from 'picocolors'
+import { PLUGIN_NAME } from './constants'
 
 const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _meta) => {
   if (!options?.host) {
@@ -36,14 +36,15 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
     name: PLUGIN_NAME,
     vite: {
       apply: 'serve',
-      configureServer(server) {
+      configureServer(server): void {
         const httpServer = server.httpServer
         const logger = server.config.logger
         let registeredServerName: string | null = null
         let caddyCheckInterval: ReturnType<typeof setInterval> | null = null
 
-        const cleanup = () => {
-          if (caddyCheckInterval) clearInterval(caddyCheckInterval)
+        const cleanup = (): void => {
+          if (caddyCheckInterval)
+            clearInterval(caddyCheckInterval)
           if (registeredServerName) {
             removeRouteForHost(caddyAdmin, registeredServerName, host).catch((err: unknown) => {
               logger.warn(pc.yellow(`  关闭时移除 Caddy route 失败: ${err instanceof Error ? err.message : err}`))
@@ -61,7 +62,7 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
           }
         }
 
-        const runRegistration = async (dial: string) => {
+        const runRegistration = async (dial: string): Promise<void> => {
           if (!(await isCaddyReachable(caddyAdmin)) && autoStartCaddy) {
             await startCaddyInBackground({ logger })
             await waitForCaddy(caddyAdmin)
@@ -102,8 +103,9 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
           const root = server.config.root
           let settled = false
           const start = Date.now()
-          const id = setInterval(() => {
-            if (settled) return
+          const id = setInterval((): void => {
+            if (settled)
+              return
             const port = readDevLockPort(root)
             if (port) {
               settled = true
@@ -128,9 +130,10 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
           return
         }
 
-        const onListening = async () => {
+        const onListening = async (): Promise<void> => {
           const addr = httpServer.address()
-          if (!addr || typeof addr !== 'object' || typeof addr.port !== 'number' || typeof (addr as { address?: string }).address !== 'string') return
+          if (!addr || typeof addr !== 'object' || typeof addr.port !== 'number' || typeof (addr as { address?: string }).address !== 'string')
+            return
           const dial = toUpstreamDial((addr as { address: string }).address, addr.port)
           await runRegistration(dial)
         }
@@ -153,5 +156,5 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
 export const unplugin = /* #__PURE__ */ createUnplugin(unpluginFactory)
 export default unplugin
 export { unpluginFactory }
-export { assertLocalhostHost, toUpstreamDial, readDevLockPort, dialFromConfigNoHttpServer } from './caddy'
+export { assertLocalhostHost, dialFromConfigNoHttpServer, readDevLockPort, toUpstreamDial } from './caddy'
 export type { Options } from './types'

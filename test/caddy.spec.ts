@@ -1,13 +1,13 @@
-import path from 'node:path'
-import os from 'node:os'
 import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   assertLocalhostHost,
-  toUpstreamDial,
-  readDevLockPort,
   dialFromConfigNoHttpServer,
   HOST_LOCALHOST_REGEX,
+  readDevLockPort,
+  toUpstreamDial,
 } from '../src/caddy'
 
 describe('assertLocalhostHost', () => {
@@ -28,7 +28,7 @@ describe('assertLocalhostHost', () => {
   })
 })
 
-describe('HOST_LOCALHOST_REGEX', () => {
+describe('hOST_LOCALHOST_REGEX', () => {
   it('匹配合法 host', () => {
     expect(HOST_LOCALHOST_REGEX.test('frontend.localhost')).toBe(true)
     expect(HOST_LOCALHOST_REGEX.test('a.b.localhost')).toBe(true)
@@ -43,7 +43,7 @@ describe('HOST_LOCALHOST_REGEX', () => {
 })
 
 describe('toUpstreamDial', () => {
-  it('IPv4 返回 host:port', () => {
+  it('iPv4 返回 host:port', () => {
     expect(toUpstreamDial('127.0.0.1', 5173)).toBe('127.0.0.1:5173')
   })
 
@@ -55,7 +55,7 @@ describe('toUpstreamDial', () => {
     expect(toUpstreamDial('::', 3000)).toBe('127.0.0.1:3000')
   })
 
-  it('IPv6 加方括号', () => {
+  it('iPv6 加方括号', () => {
     expect(toUpstreamDial('::1', 5173)).toBe('[::1]:5173')
   })
 })
@@ -66,7 +66,12 @@ describe('readDevLockPort', () => {
   const devLockPath = path.join(devDir, 'dev.lock.json')
 
   afterEach(() => {
-    try { fs.rmSync(root, { recursive: true }) } catch { /* ignore */ }
+    try {
+      fs.rmSync(root, { recursive: true })
+    }
+    catch {
+      /* ignore */
+    }
   })
 
   it('文件不存在返回 null', () => {
@@ -96,7 +101,8 @@ describe('dialFromConfigNoHttpServer', () => {
       expect(dialFromConfigNoHttpServer({})).toBe('127.0.0.1:3000')
     }
     finally {
-      if (prev !== undefined) process.env.PORT = prev
+      if (prev !== undefined)
+        process.env.PORT = prev
     }
   })
 
@@ -104,14 +110,15 @@ describe('dialFromConfigNoHttpServer', () => {
     expect(dialFromConfigNoHttpServer({ server: { port: 5173 } })).toBe('127.0.0.1:5173')
   })
 
-  it('PORT 环境变量优先', () => {
+  it('pORT 环境变量优先', () => {
     const prev = process.env.PORT
     process.env.PORT = '4000'
     try {
       expect(dialFromConfigNoHttpServer({ server: { port: 5173 } })).toBe('127.0.0.1:4000')
     }
     finally {
-      if (prev !== undefined) process.env.PORT = prev
+      if (prev !== undefined)
+        process.env.PORT = prev
       else delete process.env.PORT
     }
   })
@@ -132,7 +139,7 @@ describe('unpluginFactory', () => {
 
   it('有 host 时返回带 name 和 vite 的插件', async () => {
     const { unpluginFactory } = await import('../src/index')
-    const out = unpluginFactory({ host: 'frontend.localhost' }, mockMeta) as { name: string; vite?: { apply: string; configureServer: () => void } }
+    const out = unpluginFactory({ host: 'frontend.localhost' }, mockMeta) as { name: string, vite?: { apply: string, configureServer: () => void } }
     expect(out.name).toBe('unplugin-caddy-localhost')
     expect(out.vite).toBeDefined()
     expect(out.vite?.apply).toBe('serve')

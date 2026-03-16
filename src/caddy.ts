@@ -1,11 +1,16 @@
 /**
  * Caddy Admin API 与反向代理注册逻辑（供 Vite configureServer 使用）。
  */
-import fs from 'node:fs'
-import path from 'node:path'
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
 import net from 'node:net'
+import path from 'node:path'
+import process from 'node:process'
 import pc from 'picocolors'
+
+const TRAILING_SLASH_REGEX = /\/+$/
+const HTTP_4XX_REGEX = /4\d{2}/
+const HTTP_500_REGEX = /500/
 
 /** 与 unplugin-singleton 统一的 dev 锁文件路径（Vite/Nuxt 均为此格式） */
 export const DEV_LOCK_FILE = '.dev/dev.lock.json'
@@ -45,7 +50,7 @@ export async function caddyApi(
 
 export async function isCaddyReachable(baseUrl: string): Promise<boolean> {
   try {
-    const url = baseUrl.replace(/\/+$/, '') + '/config/'
+    const url = `${baseUrl.replace(TRAILING_SLASH_REGEX, '')}/config/`
     const res = await fetch(url, { method: 'GET', headers: { Origin: baseUrl } })
     return res.status === 200
   }
@@ -56,20 +61,21 @@ export async function isCaddyReachable(baseUrl: string): Promise<boolean> {
 
 export async function waitForCaddy(
   baseUrl: string,
-  opts: { intervalMs?: number; maxAttempts?: number } = {},
+  opts: { intervalMs?: number, maxAttempts?: number } = {},
 ): Promise<boolean> {
   const { intervalMs = 500, maxAttempts = 20 } = opts
   for (let i = 0; i < maxAttempts; i++) {
-    if (await isCaddyReachable(baseUrl)) return true
+    if (await isCaddyReachable(baseUrl))
+      return true
     await new Promise(r => setTimeout(r, intervalMs))
   }
   return false
 }
 
 function isPortInUse(port: number): Promise<boolean> {
-  return new Promise(resolve => {
+  return new Promise<boolean>((resolve: (value: boolean) => void): void => {
     const socket = new net.Socket()
-    const onError = () => {
+    const onError = (): void => {
       socket.destroy()
       resolve(false)
     }
@@ -109,7 +115,8 @@ export async function ensureCaddyServer(caddyAdmin: string): Promise<string> {
     const name = Object.keys(servers).find(
       k => Array.isArray(servers[k].listen) && servers[k].listen!.includes(':443'),
     )
-    if (name) return name
+    if (name)
+      return name
   }
   const newServer = { listen: [':443'], routes: [] }
   try {
@@ -118,7 +125,7 @@ export async function ensureCaddyServer(caddyAdmin: string): Promise<string> {
   }
   catch (err: unknown) {
     const msg = err instanceof Error ? err.message : ''
-    if (/4\d{2}/.test(msg)) {
+    if (HTTP_4XX_REGEX.test(msg)) {
       try {
         await caddyApi(caddyAdmin, '/config/apps', 'PATCH', {
           http: { servers: { [VITE_443_SERVER_NAME]: newServer } },
@@ -127,7 +134,7 @@ export async function ensureCaddyServer(caddyAdmin: string): Promise<string> {
       }
       catch (err2: unknown) {
         const msg2 = err2 instanceof Error ? err2.message : ''
-        if (/500/.test(msg2)) {
+        if (HTTP_500_REGEX.test(msg2)) {
           await caddyApi(caddyAdmin, '/config/', 'PATCH', {
             apps: { http: { servers: { [VITE_443_SERVER_NAME]: newServer } } },
           })
@@ -148,11 +155,13 @@ export function toUpstreamDial(address: string, port: number): string {
 /** 读取统一的 .dev/dev.lock.json，返回 port（由 unplugin-singleton 的 Vite 插件或 Nuxt 模块写入） */
 export function readDevLockPort(root: string): number | null {
   const p = path.join(root, DEV_LOCK_FILE)
-  if (!fs.existsSync(p)) return null
+  if (!fs.existsSync(p))
+    return null
   try {
     const raw = fs.readFileSync(p, 'utf8')
     const data = JSON.parse(raw) as { port?: number }
-    if (data && typeof data.port === 'number' && data.port > 0 && data.port <= 65535) return data.port
+    if (data && typeof data.port === 'number' && data.port > 0 && data.port <= 65535)
+      return data.port
   }
   catch {
     // ignore
@@ -169,13 +178,13 @@ interface ResolvedConfigLike {
 }
 
 export function dialFromConfigNoHttpServer(config: ResolvedConfigLike): string {
-  const fromEnv = process.env.PORT != null && process.env.PORT !== '' ? Number(process.env.PORT) : NaN
-  const fromConfig =
-    typeof config?.server?.port === 'number'
+  const fromEnv = process.env.PORT != null && process.env.PORT !== '' ? Number(process.env.PORT) : Number.NaN
+  const fromConfig
+    = typeof config?.server?.port === 'number'
       ? config.server.port
       : typeof config?.server?.port === 'string' && config.server.port !== ''
         ? Number(config.server.port)
-        : NaN
+        : Number.NaN
   const isMiddlewareMode = config?.server?.middlewareMode === true
   const port = !Number.isNaN(fromEnv)
     ? fromEnv
@@ -188,14 +197,15 @@ export function dialFromConfigNoHttpServer(config: ResolvedConfigLike): string {
     )
   }
   const h = config?.server?.host
-  const address =
-    h === true || h === '0.0.0.0' || h === '::' ? '127.0.0.1' : (typeof h === 'string' ? h : '127.0.0.1')
+  const address
+    = h === true || h === '0.0.0.0' || h === '::' ? '127.0.0.1' : (typeof h === 'string' ? h : '127.0.0.1')
   return toUpstreamDial(address, port)
 }
 
 function routeMatchesHost(route: { match?: Array<{ host?: string[] }> }, host: string): boolean {
   const matches = route?.match
-  if (!Array.isArray(matches)) return false
+  if (!Array.isArray(matches))
+    return false
   return matches.some(m => Array.isArray(m?.host) && m.host!.includes(host))
 }
 
@@ -209,7 +219,7 @@ export async function setRouteForHost(
   const config = raw as Record<string, unknown> | null
   const servers = config?.apps as Record<string, unknown> | undefined
   const httpServers = servers?.http as Record<string, unknown> | undefined
-  const serverMap = httpServers?.servers as Record<string, { routes?: unknown[]; [k: string]: unknown }> | undefined
+  const serverMap = httpServers?.servers as Record<string, { routes?: unknown[], [k: string]: unknown }> | undefined
   const server = serverName ? serverMap?.[serverName] : undefined
   if (!server) {
     await appendRoute(caddyAdmin, serverName, host, dial)
@@ -242,11 +252,13 @@ async function appendRoute(caddyAdmin: string, serverName: string, host: string,
 export async function removeRouteForHost(caddyAdmin: string, serverName: string, host: string): Promise<void> {
   const raw = await caddyApi(caddyAdmin, '/config/')
   const config = raw as Record<string, unknown> | null
-  const httpApps = (config?.apps as Record<string, unknown>)?.http as Record<string, Record<string, { routes?: unknown[]; [k: string]: unknown }>> | undefined
+  const httpApps = (config?.apps as Record<string, unknown>)?.http as Record<string, Record<string, { routes?: unknown[], [k: string]: unknown }>> | undefined
   const server = serverName ? httpApps?.servers?.[serverName] : undefined
-  if (!server || !Array.isArray(server.routes)) return
+  if (!server || !Array.isArray(server.routes))
+    return
   const newRoutes = server.routes.filter((r: { match?: Array<{ host?: string[] }> }) => !routeMatchesHost(r, host))
-  if (newRoutes.length === server.routes.length) return
+  if (newRoutes.length === server.routes.length)
+    return
   await caddyApi(caddyAdmin, `/config/apps/http/servers/${serverName}`, 'PATCH', { ...server, routes: newRoutes })
 }
 
