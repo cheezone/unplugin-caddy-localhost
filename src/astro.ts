@@ -1,9 +1,9 @@
 import type { Options } from './types'
-
+import { PLUGIN_NAME } from './constants'
 import unplugin from '.'
 
 export default (options: Options): any => ({
-  name: 'unplugin-starter',
+  name: PLUGIN_NAME,
   hooks: {
     'astro:config:setup': async (astro: any) => {
       astro.config.vite.plugins ||= []

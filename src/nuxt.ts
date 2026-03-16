@@ -1,5 +1,6 @@
 import type { Options } from './types'
 import { addVitePlugin, addWebpackPlugin, defineNuxtModule } from '@nuxt/kit'
+import { NUXT_CONFIG_KEY, NUXT_MODULE_NAME } from './constants'
 import vite from './vite'
 import webpack from './webpack'
 
@@ -9,8 +10,8 @@ export interface ModuleOptions extends Options {
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: 'nuxt-unplugin-starter',
-    configKey: 'unpluginStarter',
+    name: NUXT_MODULE_NAME,
+    configKey: NUXT_CONFIG_KEY,
   },
   defaults: {
     // ...default options

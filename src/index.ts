@@ -1,9 +1,10 @@
 import type { UnpluginFactory } from 'unplugin'
 import type { Options } from './types'
 import { createUnplugin } from 'unplugin'
+import { PLUGIN_NAME } from './constants'
 
 export const unpluginFactory: UnpluginFactory<Options | undefined> = options => ({
-  name: 'unplugin-starter',
+  name: PLUGIN_NAME,
   transformInclude(id) {
     return id.endsWith('main.ts')
   },
