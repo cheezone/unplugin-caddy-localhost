@@ -40,14 +40,13 @@ async function waitForServer(
   throw new Error(`Server did not become ready: ${url}`)
 }
 
-describe.sequential('e2E', () => {
+describe('e2e', () => {
   describe('nuxt 环境', () => {
     let proc: ReturnType<typeof spawn>
     let baseUrl: string
 
     beforeAll(async () => {
       const cwd = path.join(rootDir, 'playground/nuxt')
-      // 只用 localhost（127.0.0.1 在某些环境未监听）
       proc = spawn('bun', ['run', 'dev'], {
         cwd,
         env: { ...process.env, PORT: String(NUXT_DEV_PORT), NUXT_PORT: String(NUXT_DEV_PORT) },
@@ -63,7 +62,7 @@ describe.sequential('e2E', () => {
       const html = await res.text()
       expect(res.ok).toBe(true)
       expect(html).toContain('Mini Nuxt')
-      expect(html).toContain('unplugin-starter')
+      expect(html).toContain('插件输出')
     })
   })
 

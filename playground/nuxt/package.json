@@ -8,9 +8,6 @@
     "preview": "bun run -- nuxt preview",
     "prepare": "bun run -- nuxt prepare"
   },
-  "dependencies": {
-    "unplugin-starter": "file:../.."
-  },
   "devDependencies": {
     "nuxt": "^4.0.0"
   }

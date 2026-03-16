@@ -4,7 +4,7 @@ import { message } from './main'
 
 <template>
   <div class="min-nuxt">
-    <h1>Mini Nuxt + unplugin-starter</h1>
+    <h1>Mini Nuxt 示例页面</h1>
     <p>插件输出: {{ message }}</p>
   </div>
 </template>
