@@ -10,12 +10,8 @@ import { createUnplugin } from 'unplugin'
 import {
   assertLocalhostHost,
   CADDY_ADMIN,
-  DEV_LOCK_POLL_MS,
-  DEV_LOCK_TIMEOUT_MS,
-  dialFromConfigNoHttpServer,
   ensureCaddyServer,
   isCaddyReachable,
-  readDevLockPort,
   removeRouteForHost,
   setRouteForHost,
   startCaddyInBackground,
@@ -100,30 +96,7 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
         }
 
         if (!httpServer) {
-          const root = server.config.root
-          let settled = false
-          const start = Date.now()
-          const id = setInterval((): void => {
-            if (settled)
-              return
-            const port = readDevLockPort(root)
-            if (port) {
-              settled = true
-              clearInterval(id)
-              const dial = toUpstreamDial('127.0.0.1', port)
-              runRegistration(dial).catch(() => {})
-              return
-            }
-            if (Date.now() - start >= DEV_LOCK_TIMEOUT_MS) {
-              settled = true
-              clearInterval(id)
-              const dial = dialFromConfigNoHttpServer(server.config as Parameters<typeof dialFromConfigNoHttpServer>[0])
-              if (server.config?.server?.middlewareMode) {
-                logger.warn(pc.yellow(`  未读到 .dev/dev.lock.json，使用回退端口。请在 nuxt.config 的 modules 中加入 "unplugin-singleton/nuxt" 以写入锁文件。`))
-              }
-              runRegistration(dial).catch(() => {})
-            }
-          }, DEV_LOCK_POLL_MS)
+          logger.warn(pc.yellow('  无 httpServer，跳过 Caddy 反代注册。'))
           process.once('SIGINT', cleanup)
           process.once('SIGTERM', cleanup)
           process.on('exit', cleanup)
@@ -156,5 +129,5 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
 export const unplugin = /* #__PURE__ */ createUnplugin(unpluginFactory)
 export default unplugin
 export { unpluginFactory }
-export { assertLocalhostHost, dialFromConfigNoHttpServer, readDevLockPort, toUpstreamDial } from './caddy'
+export { assertLocalhostHost, toUpstreamDial } from './caddy'
 export type { Options } from './types'

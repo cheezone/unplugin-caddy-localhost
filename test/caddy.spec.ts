@@ -1,12 +1,7 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   assertLocalhostHost,
-  dialFromConfigNoHttpServer,
   HOST_LOCALHOST_REGEX,
-  readDevLockPort,
   toUpstreamDial,
 } from '../src/caddy'
 
@@ -57,74 +52,6 @@ describe('toUpstreamDial', () => {
 
   it('iPv6 加方括号', () => {
     expect(toUpstreamDial('::1', 5173)).toBe('[::1]:5173')
-  })
-})
-
-describe('readDevLockPort', () => {
-  const root = path.join(os.tmpdir(), `caddy-test-${Date.now()}`)
-  const devDir = path.join(root, '.dev')
-  const devLockPath = path.join(devDir, 'dev.lock.json')
-
-  afterEach(() => {
-    try {
-      fs.rmSync(root, { recursive: true })
-    }
-    catch {
-      /* ignore */
-    }
-  })
-
-  it('文件不存在返回 null', () => {
-    expect(readDevLockPort(root)).toBeNull()
-  })
-
-  it('有效锁文件返回端口号', () => {
-    fs.mkdirSync(devDir, { recursive: true })
-    fs.writeFileSync(devLockPath, JSON.stringify({ pid: 1, port: 3200, baseUrl: 'http://localhost:3200' }), 'utf8')
-    expect(readDevLockPort(root)).toBe(3200)
-  })
-
-  it('无效 port 返回 null', () => {
-    fs.mkdirSync(devDir, { recursive: true })
-    fs.writeFileSync(devLockPath, JSON.stringify({ pid: 1, port: 0, baseUrl: 'http://localhost:0' }), 'utf8')
-    expect(readDevLockPort(root)).toBeNull()
-    fs.writeFileSync(devLockPath, JSON.stringify({ pid: 1, port: 99999, baseUrl: 'http://localhost:99999' }), 'utf8')
-    expect(readDevLockPort(root)).toBeNull()
-  })
-})
-
-describe('dialFromConfigNoHttpServer', () => {
-  it('无 config 用 3000', () => {
-    const prev = process.env.PORT
-    delete process.env.PORT
-    try {
-      expect(dialFromConfigNoHttpServer({})).toBe('127.0.0.1:3000')
-    }
-    finally {
-      if (prev !== undefined)
-        process.env.PORT = prev
-    }
-  })
-
-  it('config.server.port 生效', () => {
-    expect(dialFromConfigNoHttpServer({ server: { port: 5173 } })).toBe('127.0.0.1:5173')
-  })
-
-  it('pORT 环境变量优先', () => {
-    const prev = process.env.PORT
-    process.env.PORT = '4000'
-    try {
-      expect(dialFromConfigNoHttpServer({ server: { port: 5173 } })).toBe('127.0.0.1:4000')
-    }
-    finally {
-      if (prev !== undefined)
-        process.env.PORT = prev
-      else delete process.env.PORT
-    }
-  })
-
-  it('middlewareMode 无 port 用 3000', () => {
-    expect(dialFromConfigNoHttpServer({ server: { middlewareMode: true } })).toBe('127.0.0.1:3000')
   })
 })
 

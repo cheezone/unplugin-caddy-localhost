@@ -6,9 +6,7 @@ import {
   CADDY_ADMIN,
   DEV_LOCK_POLL_MS,
   DEV_LOCK_TIMEOUT_MS,
-  dialFromConfigNoHttpServer,
   ensureCaddyServer,
-  readDevLockPort,
   setRouteForHost,
   startCaddyInBackground,
   waitForCaddy,
@@ -19,22 +17,9 @@ const TRAILING_SLASH_REGEX = /\/+$/
 
 export interface ModuleOptions extends Options {}
 
-interface DevServerShape {
-  port?: number
-  host?: string
-  url?: string
-}
-
 interface LoggerShape {
   info: (msg: string) => void
   warn: (msg: string) => void
-}
-
-function getDevServerFromOptions(options: Nuxt['options']): DevServerShape | undefined {
-  if (!options || typeof options !== 'object' || !('devServer' in options))
-    return undefined
-  const d = (options as { devServer?: DevServerShape }).devServer
-  return d
 }
 
 function getLoggerFromNuxt(nuxt: Nuxt): LoggerShape | undefined {
@@ -52,43 +37,25 @@ function getLoggerFromNuxt(nuxt: Nuxt): LoggerShape | undefined {
   }
 }
 
-/** 从 listen 的 listener 形参推导 upstream dial，无则返回 null */
+/** 从 listen 的 listener 取 url，得到 host:port 作为 Caddy upstream dial */
 function dialFromListenListener(listener: unknown): string | null {
   if (listener === null || typeof listener !== 'object')
     return null
   const l = listener as Record<string, unknown>
-
-  const fromAddress = (): string | null => {
-    const addr = l.address
-    if (!addr || typeof addr !== 'object' || typeof (addr as { port?: unknown }).port !== 'number')
+  const url = typeof l.url === 'string' ? l.url : Array.isArray(l.urls) && typeof l.urls[0] === 'string' ? l.urls[0] : undefined
+  if (!url)
+    return null
+  try {
+    const u = new URL(url.startsWith('http') ? url : `http://${url}`)
+    const port = u.port ? Number(u.port) : (u.protocol === 'https:' ? 443 : 80)
+    if (!port || port <= 0 || port > 65535)
       return null
-    const { port, address } = addr as { port: number, address?: string }
-    if (port <= 0 || port > 65535)
-      return null
-    const host = address && address !== '::' && address !== '0.0.0.0' ? address : '127.0.0.1'
-    const h = host.includes(':') ? `[${host}]` : host
-    return `${h}:${port}`
+    const host = u.hostname || '127.0.0.1'
+    return host.includes(':') ? `[${host}]:${port}` : `${host}:${port}`
   }
-
-  const fromUrl = (): string | null => {
-    const url = typeof l.url === 'string' ? l.url : Array.isArray(l.urls) && typeof l.urls[0] === 'string' ? l.urls[0] : undefined
-    if (!url)
-      return null
-    try {
-      const u = new URL(url.startsWith('http') ? url : `http://${url}`)
-      const port = Number(u.port || '0')
-      if (!port || port <= 0 || port > 65535)
-        return null
-      const host = u.hostname && u.hostname !== '::' && u.hostname !== '0.0.0.0' ? u.hostname : '127.0.0.1'
-      const h = host.includes(':') ? `[${host}]` : host
-      return `${h}:${port}`
-    }
-    catch {
-      return null
-    }
+  catch {
+    return null
   }
-
-  return fromAddress() ?? fromUrl()
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -107,6 +74,17 @@ export default defineNuxtModule<ModuleOptions>({
     }
 
     assertLocalhostHost(options.host)
+    const log = (msg: string): void => {
+      if (logger)
+        logger.info(msg)
+    }
+    const warn = (msg: string): void => {
+      if (logger)
+        logger.warn(msg)
+      else
+        console.warn(msg)
+    }
+    log(`[unplugin-caddy-localhost] 已加载，host=${options.host}`)
 
     const caddyAdmin = (options.caddyAdmin ?? CADDY_ADMIN).replace(TRAILING_SLASH_REGEX, '')
 
@@ -126,50 +104,42 @@ export default defineNuxtModule<ModuleOptions>({
     const registerRoute = async (dial: string): Promise<void> => {
       const ok = await ensureCaddyReady()
       if (!ok) {
-        logger?.warn('[unplugin-caddy-localhost] Caddy 未就绪，跳过 HTTPS 反代注册。')
+        warn('[unplugin-caddy-localhost] Caddy 未就绪，跳过 HTTPS 反代注册。')
         return
       }
       const serverName = await ensureCaddyServer(caddyAdmin)
       await setRouteForHost(caddyAdmin, serverName, options.host, dial)
-      logger?.info(`[unplugin-caddy-localhost] 已将 https://${options.host} 反代到 ${dial}`)
+      log(`[unplugin-caddy-localhost] 已将 https://${options.host} 反代到 ${dial}`)
     }
 
-    const resolveDialFromNuxt = (): string | null => {
-      const dev = getDevServerFromOptions(nuxt.options)
-      if (dev?.port != null && dev.port > 0 && dev.port <= 65535) {
-        const host = dev.host && dev.host !== '0.0.0.0' && dev.host !== '::' ? dev.host : '127.0.0.1'
-        const h = host.includes(':') ? `[${host}]` : host
-        return `${h}:${dev.port}`
-      }
-      const portFromLock = readDevLockPort(nuxt.options.rootDir)
-      if (portFromLock != null) {
-        const host = dev?.host && dev.host !== '0.0.0.0' && dev.host !== '::' ? dev.host : '127.0.0.1'
-        const h = host.includes(':') ? `[${host}]` : host
-        return `${h}:${portFromLock}`
-      }
-      try {
-        return dialFromConfigNoHttpServer({
-          server: {
-            port: dev?.port,
-            host: dev?.host,
-          },
-        })
-      }
-      catch {
-        return null
-      }
-    }
-
-    nuxt.hook('listen', (_server: unknown, listener: unknown) => {
-      const dial = dialFromListenListener(listener) ?? resolveDialFromNuxt()
+    let isRegistering = false
+    nuxt.hook('listen', (first: unknown, second?: unknown) => {
+      const listener = second ?? first
+      const dial = dialFromListenListener(listener)
       if (!dial) {
-        logger?.warn('[unplugin-caddy-localhost] 无法推导开发服务器地址，跳过 HTTPS 反代注册。')
+        warn('[unplugin-caddy-localhost] 无法推导开发服务器地址，跳过 HTTPS 反代注册。')
         return
       }
-      registerRoute(dial).catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err)
-        logger?.warn(`[unplugin-caddy-localhost] 注册 https://${options.host} 失败: ${msg}`)
-      })
+      if (isRegistering) {
+        return
+      }
+      isRegistering = true
+      const run = (): void => {
+        registerRoute(dial)
+          .catch((err: unknown) => {
+            const msg = err instanceof Error ? err.message : String(err)
+            warn(`[unplugin-caddy-localhost] 注册 https://${options.host} 失败: ${msg}`)
+          })
+          .finally(() => {
+            isRegistering = false
+          })
+      }
+      if (typeof setImmediate !== 'undefined') {
+        setImmediate(run)
+      }
+      else {
+        setTimeout(run, 0)
+      }
     })
   },
 })

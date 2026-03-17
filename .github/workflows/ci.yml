@@ -1,3 +1,6 @@
+# 插件依赖 Caddy 二进制（运行时强依赖）。CI 中安装 Caddy 以便 e2e 能启动插件并注册。
+# 当前 e2e 只请求 http://localhost，未测 https://xxx.localhost，故未做证书信任；
+# 若日后增加 HTTPS e2e，可设置 NODE_EXTRA_CA_CERTS=~/.local/share/caddy/pki/authorities/local/root.crt 或使用 caddy trust。
 name: CI
 
 on:
@@ -46,6 +49,25 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+
+      - name: Install Caddy (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
+          curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+          curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+          sudo apt-get update -qq
+          sudo apt-get install -y caddy
+          sudo setcap 'cap_net_bind_service=+ep' /usr/bin/caddy 2>/dev/null || true
+
+      - name: Install Caddy (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install caddy
+
+      - name: Install Caddy (Windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install caddy -y
 
       - name: Install
         run: bun install --frozen-lockfile

@@ -2,9 +2,7 @@
  * Caddy Admin API 与反向代理注册逻辑（供 Vite configureServer 使用）。
  */
 import { spawn } from 'node:child_process'
-import fs from 'node:fs'
 import net from 'node:net'
-import path from 'node:path'
 import process from 'node:process'
 import pc from 'picocolors'
 
@@ -12,8 +10,6 @@ const TRAILING_SLASH_REGEX = /\/+$/
 const HTTP_4XX_REGEX = /4\d{2}/
 const HTTP_500_REGEX = /500/
 
-/** 与 unplugin-singleton 统一的 dev 锁文件路径（Vite/Nuxt 均为此格式） */
-export const DEV_LOCK_FILE = '.dev/dev.lock.json'
 export const DEV_LOCK_POLL_MS = 200
 export const DEV_LOCK_TIMEOUT_MS = 20000
 
@@ -150,56 +146,6 @@ export async function ensureCaddyServer(caddyAdmin: string): Promise<string> {
 export function toUpstreamDial(address: string, port: number): string {
   const host = (address === '::' || address === '0.0.0.0') ? '127.0.0.1' : address
   return host.includes(':') ? `[${host}]:${port}` : `${host}:${port}`
-}
-
-/** 读取统一的 .dev/dev.lock.json，返回 port（由 unplugin-singleton 的 Vite 插件或 Nuxt 模块写入） */
-export function readDevLockPort(root: string): number | null {
-  const p = path.join(root, DEV_LOCK_FILE)
-  if (!fs.existsSync(p))
-    return null
-  try {
-    const raw = fs.readFileSync(p, 'utf8')
-    const data = JSON.parse(raw) as { port?: number }
-    if (data && typeof data.port === 'number' && data.port > 0 && data.port <= 65535)
-      return data.port
-  }
-  catch {
-    // ignore
-  }
-  return null
-}
-
-interface ResolvedConfigLike {
-  server?: {
-    port?: number | string
-    host?: string | boolean
-    middlewareMode?: boolean
-  }
-}
-
-export function dialFromConfigNoHttpServer(config: ResolvedConfigLike): string {
-  const fromEnv = process.env.PORT != null && process.env.PORT !== '' ? Number(process.env.PORT) : Number.NaN
-  const fromConfig
-    = typeof config?.server?.port === 'number'
-      ? config.server.port
-      : typeof config?.server?.port === 'string' && config.server.port !== ''
-        ? Number(config.server.port)
-        : Number.NaN
-  const isMiddlewareMode = config?.server?.middlewareMode === true
-  const port = !Number.isNaN(fromEnv)
-    ? fromEnv
-    : isMiddlewareMode
-      ? 3000
-      : (Number.isNaN(fromConfig) ? 3000 : fromConfig)
-  if (port <= 0 || port > 65535) {
-    throw new Error(
-      `[unplugin-caddy-localhost] 无 httpServer，推导出的 port 无效: ${port}（PORT=${process.env.PORT}, config.server.port=${config?.server?.port}）。`,
-    )
-  }
-  const h = config?.server?.host
-  const address
-    = h === true || h === '0.0.0.0' || h === '::' ? '127.0.0.1' : (typeof h === 'string' ? h : '127.0.0.1')
-  return toUpstreamDial(address, port)
 }
 
 function routeMatchesHost(route: { match?: Array<{ host?: string[] }> }, host: string): boolean {

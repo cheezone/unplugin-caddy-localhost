@@ -1,136 +1,93 @@
-import type { Buffer } from 'node:buffer'
+import { Buffer } from 'node:buffer'
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import https from 'node:https'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const rootDir = path.resolve(__dirname, '..')
+const E2E_MAGIC = '8712'
 
-const NUXT_DEV_PORT = 30555
-const VITE_DEV_PORT = 30556
-
-async function fetchWithTimeout(url: string, ms: number): Promise<Response | null> {
-  const c = new AbortController()
-  const t = setTimeout(() => c.abort(), ms)
-  try {
-    const r = await fetch(url, { signal: c.signal })
-    return r
+async function fetchHttps(host: string, ms = 8000): Promise<{ statusCode: number, text: string }> {
+  const opts: https.RequestOptions = {
+    hostname: '127.0.0.1',
+    port: 443,
+    path: '/',
+    method: 'GET',
+    rejectUnauthorized: false,
+    headers: { Host: host },
+    servername: host,
   }
-  catch {
-    return null
-  }
-  finally {
-    clearTimeout(t)
-  }
-}
-
-/** 等待进程 stdout/stderr 出现就绪信号（如 "Local:" 或 "localhost:端口"）再返回，避免在 listen 前轮询 fetch。 */
-function waitForProcessReady(
-  proc: ReturnType<typeof spawn>,
-  readyPattern: RegExp,
-  timeout: number,
-): Promise<void> {
   return new Promise((resolve, reject) => {
-    const deadline = Date.now() + timeout
-    let resolved = false
-    const check = (chunk: Buffer | string) => {
-      if (resolved)
-        return
-      const s = typeof chunk === 'string' ? chunk : chunk.toString()
-      if (readyPattern.test(s)) {
-        resolved = true
-        resolve()
-      }
-    }
-    proc.stdout?.on('data', check)
-    proc.stderr?.on('data', check)
-    const t = setInterval(() => {
-      if (resolved)
-        return
-      if (Date.now() >= deadline) {
-        resolved = true
-        clearInterval(t)
-        reject(new Error(`Process did not emit ready pattern ${readyPattern} within ${timeout}ms`))
-      }
-    }, 200)
-    proc.once('exit', (code) => {
-      if (!resolved) {
-        resolved = true
-        clearInterval(t)
-        reject(new Error(`Process exited with code ${code} before ready`))
-      }
+    const t = setTimeout(() => reject(new Error('timeout')), ms)
+    const req = https.request(opts, (res) => {
+      const chunks: Buffer[] = []
+      res.on('data', c => chunks.push(c))
+      res.on('end', () => {
+        clearTimeout(t)
+        resolve({ statusCode: res.statusCode ?? 0, text: Buffer.concat(chunks).toString('utf8') })
+      })
     })
+    req.on('error', (e) => {
+      clearTimeout(t)
+      reject(e)
+    })
+    req.end()
   })
 }
 
-async function waitForServer(
-  url: string,
-  timeout = 10_000,
-  fallbackUrl?: string,
-  proc?: ReturnType<typeof spawn>,
-): Promise<string> {
-  const readyPattern = /Local:|localhost:\d+|127\.0\.0\.1:\d+/
-  if (proc) {
-    await waitForProcessReady(proc, readyPattern, Math.min(8000, timeout))
-  }
-  const start = Date.now()
-  const urls = [url, ...(fallbackUrl ? [fallbackUrl] : [])]
-  while (Date.now() - start < timeout) {
-    for (const u of urls) {
-      const r = await fetchWithTimeout(u, 2000)
-      if (r?.ok)
-        return u
+async function waitReady(host: string, timeout = 50_000, delay = 15_000): Promise<void> {
+  await new Promise(r => setTimeout(r, delay))
+  const end = Date.now() + timeout
+  while (Date.now() < end) {
+    try {
+      const r = await fetchHttps(host, 6000)
+      if (r.statusCode === 200 && r.text.includes(E2E_MAGIC))
+        return
     }
-    await new Promise(r => setTimeout(r, 200))
+    catch { /* noop */ }
+    await new Promise(r => setTimeout(r, 500))
   }
-  throw new Error(`Server did not become ready: ${url}`)
+  throw new Error(`https://${host} 未在 ${timeout}ms 内返回 200 且含 "${E2E_MAGIC}"`)
 }
 
 describe('e2e', () => {
-  describe('nuxt 环境', () => {
-    let proc: ReturnType<typeof spawn>
-    let baseUrl: string
+  const nuxtHost = `nuxt.${randomUUID()}.localhost`
+  const viteHost = `vite.${randomUUID()}.localhost`
+  let nuxtProc: ReturnType<typeof spawn>
+  let viteProc: ReturnType<typeof spawn>
 
-    beforeAll(async () => {
-      const cwd = path.join(rootDir, 'playground/nuxt')
-      proc = spawn('bun', ['run', 'dev'], {
-        cwd,
-        env: { ...process.env, PORT: String(NUXT_DEV_PORT), NUXT_PORT: String(NUXT_DEV_PORT) },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
-      baseUrl = await waitForServer(`http://localhost:${NUXT_DEV_PORT}`, 10_000)
-    }, 12_000)
-
-    afterAll(() => proc.kill('SIGTERM'))
-
-    it('首页有内容（含插件输出）', async () => {
-      const res = await fetch(baseUrl)
-      const html = await res.text()
-      expect(res.ok).toBe(true)
-      expect(html).toContain('Mini Nuxt')
-      expect(html).toContain('插件输出')
+  beforeAll(async () => {
+    nuxtProc = spawn('bun', ['run', 'dev'], {
+      cwd: path.join(rootDir, 'playground/nuxt'),
+      env: { ...process.env, CADDY_HOST: nuxtHost },
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
+    viteProc = spawn('bun', ['x', 'vite'], {
+      cwd: path.join(rootDir, 'playground/vite'),
+      env: { ...process.env, CADDY_HOST: viteHost },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    await Promise.all([
+      waitReady(nuxtHost, 55_000, 22_000),
+      waitReady(viteHost, 55_000, 12_000),
+    ])
+  }, 70_000)
+
+  afterAll(() => {
+    nuxtProc.kill('SIGTERM')
+    viteProc.kill('SIGTERM')
   })
 
-  describe('vite 环境', () => {
-    let proc: ReturnType<typeof spawn>
+  it('nuxt 域名反代到应用且内容含魔数', async () => {
+    const { statusCode, text } = await fetchHttps(nuxtHost)
+    expect(statusCode).toBe(200)
+    expect(text).toContain(E2E_MAGIC)
+  })
 
-    beforeAll(async () => {
-      proc = spawn('bun', ['x', 'vite', '--port', String(VITE_DEV_PORT)], {
-        cwd: path.join(rootDir, 'playground/vite'),
-        env: process.env,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
-      await waitForServer(`http://localhost:${VITE_DEV_PORT}`, 10_000, undefined, proc)
-    }, 12_000)
-
-    afterAll(() => proc.kill('SIGTERM'))
-
-    it('首页有内容（含 app 挂载点）', async () => {
-      const res = await fetch(`http://localhost:${VITE_DEV_PORT}`)
-      const html = await res.text()
-      expect(res.ok).toBe(true)
-      expect(html).toContain('id="app"')
-      expect(html).toMatch(/<script[^>]+src=[^>]+\.(ts|js)/)
-    })
+  it('vite 域名反代到应用且内容含魔数', async () => {
+    const { statusCode, text } = await fetchHttps(viteHost)
+    expect(statusCode).toBe(200)
+    expect(text).toContain(E2E_MAGIC)
   })
 })
