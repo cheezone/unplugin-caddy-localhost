@@ -39,16 +39,26 @@ async function fetchHttps(host: string, ms = 8000): Promise<{ statusCode: number
 async function waitReady(host: string, timeout = 50_000, delay = 15_000): Promise<void> {
   await new Promise(r => setTimeout(r, delay))
   const end = Date.now() + timeout
+  let lastErr: Error | null = null
+  let lastRes: { statusCode: number, text: string } | null = null
   while (Date.now() < end) {
     try {
       const r = await fetchHttps(host, 6000)
+      lastRes = r
       if (r.statusCode === 200 && r.text.includes(E2E_MAGIC))
         return
     }
-    catch { /* noop */ }
+    catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e))
+    }
     await new Promise(r => setTimeout(r, 500))
   }
-  throw new Error(`https://${host} 未在 ${timeout}ms 内返回 200 且含 "${E2E_MAGIC}"`)
+  const details: string[] = []
+  if (lastErr)
+    details.push(`最近错误: ${(lastErr as NodeJS.ErrnoException).code ?? ''} ${lastErr.message}`)
+  if (lastRes)
+    details.push(`最近响应: status=${lastRes.statusCode} body前200字=${lastRes.text.slice(0, 200)}`)
+  throw new Error(`https://${host} 未在 ${timeout}ms 内返回 200 且含 "${E2E_MAGIC}"。${details.length ? ` ${details.join(' ')}` : ''}`)
 }
 
 describe('e2e', () => {
@@ -58,6 +68,19 @@ describe('e2e', () => {
   let viteProc: ReturnType<typeof spawn>
 
   beforeAll(async () => {
+    if (process.env.CI) {
+      const dns = await import('node:dns').then(d => d.promises)
+      try {
+        const nuxtIp = await dns.lookup(nuxtHost.split(':')[0])
+        const viteIp = await dns.lookup(viteHost.split(':')[0])
+        console.warn('[e2e CI] .localhost 解析:', nuxtHost, '->', nuxtIp.address, ',', viteHost, '->', viteIp.address)
+      }
+      catch (e) {
+        console.warn('[e2e CI] .localhost 解析失败:', e)
+      }
+      console.warn('[e2e CI] 请求使用 127.0.0.1:443 + Host，不依赖 DNS；rejectUnauthorized=false')
+    }
+
     nuxtProc = spawn('bun', ['run', 'dev'], {
       cwd: path.join(rootDir, 'playground/nuxt'),
       env: { ...process.env, CADDY_HOST: nuxtHost },
@@ -68,10 +91,24 @@ describe('e2e', () => {
       env: { ...process.env, CADDY_HOST: viteHost },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
-    await Promise.all([
-      waitReady(nuxtHost, 55_000, 22_000),
-      waitReady(viteHost, 55_000, 12_000),
-    ])
+    const nuxtStderr: Buffer[] = []
+    const viteStderr: Buffer[] = []
+    nuxtProc.stderr?.on('data', (c: Buffer) => nuxtStderr.push(c))
+    viteProc.stderr?.on('data', (c: Buffer) => viteStderr.push(c))
+
+    try {
+      await Promise.all([
+        waitReady(nuxtHost, 55_000, 22_000),
+        waitReady(viteHost, 55_000, 12_000),
+      ])
+    }
+    catch (e) {
+      if (process.env.CI && (nuxtStderr.length || viteStderr.length)) {
+        console.error('[e2e CI] Nuxt stderr:', Buffer.concat(nuxtStderr).toString('utf8').slice(-1500))
+        console.error('[e2e CI] Vite stderr:', Buffer.concat(viteStderr).toString('utf8').slice(-1500))
+      }
+      throw e
+    }
   }, 70_000)
 
   afterAll(() => {

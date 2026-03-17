@@ -75,5 +75,59 @@ jobs:
       - name: Build
         run: bun run build
 
+      # CI 环境诊断：确认 .localhost 解析、443 是否可连、是否缺 Caddy trust
+      - name: CI 环境诊断
+        run: |
+          node -e "
+          const dns = require('dns');
+          const net = require('net');
+          console.log('RUNNER_OS =', process.env.RUNNER_OS);
+          console.log('NODE_VERSION =', process.version);
+          dns.lookup('e2e.localhost', (err, addr) => {
+            if (err) console.log('.localhost 解析: 失败', err.code, err.message);
+            else console.log('.localhost 解析: e2e.localhost ->', addr);
+            const done = () => process.exit(0);
+            const s = net.createConnection(443, '127.0.0.1', () => { console.log('127.0.0.1:443 可连接（test 前应未占用）'); s.destroy(); done(); });
+            s.on('error', e => { console.log('127.0.0.1:443', e.code || 'error', e.message); done(); });
+          });
+          "
+        shell: bash
+
+      - name: CI 诊断 Caddy trust (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          CADDY_ROOT="$HOME/.local/share/caddy/pki/authorities/local/root.crt"
+          if [ -f "$CADDY_ROOT" ]; then
+            echo "Caddy root.crt 存在，设置 NODE_EXTRA_CA_CERTS 供 Test 使用"
+            echo "NODE_EXTRA_CA_CERTS=$CADDY_ROOT" >> $GITHUB_ENV
+          else
+            echo "Caddy root.crt 不存在（e2e 使用 rejectUnauthorized: false，不依赖 trust）"
+          fi
+        shell: bash
+
+      - name: CI 诊断 Caddy trust (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $caddyRoot = "$env:APPDATA\Caddy\pki\authorities\local\root.crt"
+          if (Test-Path $caddyRoot) {
+            Write-Host "Caddy root.crt 存在，设置 NODE_EXTRA_CA_CERTS"
+            "NODE_EXTRA_CA_CERTS=$caddyRoot" >> $env:GITHUB_ENV
+          } else {
+            Write-Host "Caddy root.crt 不存在"
+          }
+        shell: pwsh
+
+      - name: CI 诊断 Caddy trust (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          CADDY_ROOT="$HOME/Library/Application Support/Caddy/pki/authorities/local/root.crt"
+          if [ -f "$CADDY_ROOT" ]; then
+            echo "Caddy root.crt 存在"
+            echo "NODE_EXTRA_CA_CERTS=$CADDY_ROOT" >> $GITHUB_ENV
+          else
+            echo "Caddy root.crt 不存在"
+          fi
+        shell: bash
+
       - name: Test
         run: bun test
