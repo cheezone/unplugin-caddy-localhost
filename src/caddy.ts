@@ -2,6 +2,9 @@
  * Caddy Admin API 与反向代理注册逻辑（供 Vite configureServer 使用）。
  */
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import net from 'node:net'
 import process from 'node:process'
 import pc from 'picocolors'
@@ -85,13 +88,27 @@ function isPortInUse(port: number): Promise<boolean> {
   })
 }
 
+/** 仅监听 :443 的 Caddy 初始配置，避免在 Windows 等环境绑定 :80 被拒绝（需管理员） */
+const CADDY_MINIMAL_CONFIG = {
+  admin: { listen: 'tcp/localhost:2019' },
+  apps: {
+    http: {
+      servers: {
+        [VITE_443_SERVER_NAME]: { listen: [':443'], routes: [] },
+      },
+    },
+  },
+}
+
 export async function startCaddyInBackground(ctx: { logger?: { warn: (msg: string) => void } } = {}): Promise<ReturnType<typeof spawn> | null> {
   if (await isPortInUse(443)) {
     ctx.logger?.warn(pc.yellow('  443 已被占用但 Caddy Admin API 不可达，可能已有 Caddy 在运行。请确保只运行一个 Caddy（pkill -x caddy 后重新 caddy run），否则会 502。'))
     return null
   }
   try {
-    const child = spawn('caddy', ['run'], {
+    const configPath = path.join(os.tmpdir(), 'caddy-unplugin-localhost.json')
+    fs.writeFileSync(configPath, JSON.stringify(CADDY_MINIMAL_CONFIG), 'utf8')
+    const child = spawn('caddy', ['run', '--config', configPath], {
       detached: true,
       stdio: 'ignore',
       env: process.env,
