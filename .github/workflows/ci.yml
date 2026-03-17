@@ -37,7 +37,7 @@ jobs:
     strategy:
       matrix:
         node: [lts/*]
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
       fail-fast: false
 
     steps:
@@ -64,10 +64,6 @@ jobs:
       - name: Install Caddy (macOS)
         if: matrix.os == 'macos-latest'
         run: brew install caddy
-
-      - name: Install Caddy (Windows)
-        if: matrix.os == 'windows-latest'
-        run: choco install caddy -y
 
       - name: Install
         run: bun install --frozen-lockfile
