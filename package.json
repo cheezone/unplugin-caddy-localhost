@@ -102,6 +102,6 @@
     "webpack": "^5.105.4"
   },
   "simple-git-hooks": {
-    "pre-commit": "bun run lint -- --fix"
+    "pre-commit": "bun run lint -- --fix && git add -u"
   }
 }
