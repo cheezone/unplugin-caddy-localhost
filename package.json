@@ -71,34 +71,20 @@
     "webpack": "^4 || ^5"
   },
   "peerDependenciesMeta": {
-    "@farmfe/core": {
-      "optional": true
-    },
-    "@nuxt/kit": {
-      "optional": true
-    },
-    "@nuxt/schema": {
-      "optional": true
-    },
-    "esbuild": {
-      "optional": true
-    },
-    "rollup": {
-      "optional": true
-    },
-    "vite": {
-      "optional": true
-    },
-    "webpack": {
-      "optional": true
-    }
+    "@farmfe/core": { "optional": true },
+    "@nuxt/kit": { "optional": true },
+    "@nuxt/schema": { "optional": true },
+    "esbuild": { "optional": true },
+    "rollup": { "optional": true },
+    "vite": { "optional": true },
+    "webpack": { "optional": true }
   },
   "dependencies": {
     "picocolors": "^1.1.1",
     "unplugin": "^3.0.0"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^7.7.2",
+    "@antfu/eslint-config": "^7.7.3",
     "@nuxt/kit": "^4.4.2",
     "@nuxt/schema": "^4.4.2",
     "@types/node": "^25.5.0",
@@ -107,7 +93,7 @@
     "nodemon": "^3.1.14",
     "rollup": "^4.59.0",
     "simple-git-hooks": "^2.13.1",
-    "tsdown": "^0.21.3",
+    "tsdown": "^0.21.4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
