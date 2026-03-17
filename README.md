@@ -1,5 +1,7 @@
 # unplugin-caddy-localhost
 
+[![NPM version](https://img.shields.io/npm/v/unplugin-caddy-localhost?color=a1b858&label=)](https://www.npmjs.com/package/unplugin-caddy-localhost)
+
 [Unplugin](https://unplugin.unjs.io/) 约定：用 Caddy 把 dev 映射到 `https://xxx.localhost`，host 须为 `xxx.localhost` 形式（如 `frontend.localhost`）。
 
 ## 前置条件
