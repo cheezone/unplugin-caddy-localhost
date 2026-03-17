@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import https from 'node:https'
 import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import kill from 'tree-kill'
 
 const rootDir = path.resolve(__dirname, '..')
 const E2E_MAGIC = '8712'
