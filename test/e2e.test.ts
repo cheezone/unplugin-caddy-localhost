@@ -66,7 +66,11 @@ async function waitReady(host: string, timeout = 50_000, delay = 15_000): Promis
 }
 
 function spawnVp(args: string[], cwd: string, env?: NodeJS.ProcessEnv) {
-  const stdio: Exclude<Parameters<typeof spawn>[2], undefined>['stdio'] = ['ignore', 'pipe', 'pipe'];
+  const stdio: Exclude<Parameters<typeof spawn>[2], undefined>['stdio'] = [
+    'ignore',
+    'pipe',
+    'pipe',
+  ];
   const options = {
     cwd,
     env: env ?? process.env,

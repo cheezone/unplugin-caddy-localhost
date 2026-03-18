@@ -49,7 +49,11 @@ jobs:
 
       - name: Install Caddy (Windows)
         if: matrix.os == 'windows-latest'
-        run: choco install caddy -y
+        run: |
+          choco install caddy -y
+          echo "C:\\ProgramData\\chocolatey\\bin" >> $env:GITHUB_PATH
+          where caddy
+          caddy version
 
       - name: Install Caddy (macOS)
         if: matrix.os == 'macos-latest'
