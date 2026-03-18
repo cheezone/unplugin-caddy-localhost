@@ -1,12 +1,13 @@
 {
   "name": "playground-vite",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "nodemon -w '../../src/**/*.ts' -e .ts -x vite"
   },
   "devDependencies": {
-    "vite": "^6.3.5",
-    "vite-plugin-inspect": "^11.3.3"
+    "vite": "catalog:",
+    "vite-plugin-inspect": "^11.3.3",
+    "vite-plus": "catalog:"
   }
 }

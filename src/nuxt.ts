@@ -1,12 +1,10 @@
-import type { Options } from './types'
-import { addVitePlugin, addWebpackPlugin, defineNuxtModule } from '@nuxt/kit'
-import { NUXT_CONFIG_KEY, NUXT_MODULE_NAME } from './constants'
-import vite from './vite'
-import webpack from './webpack'
+import type { Options } from './types';
+import { addVitePlugin, addWebpackPlugin, defineNuxtModule } from '@nuxt/kit';
+import { NUXT_CONFIG_KEY, NUXT_MODULE_NAME } from './constants';
+import vite from './vite';
+import webpack from './webpack';
 
-export interface ModuleOptions extends Options {
-
-}
+export interface ModuleOptions extends Options {}
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
@@ -17,9 +15,9 @@ export default defineNuxtModule<ModuleOptions>({
     // ...default options
   },
   setup(options, _nuxt) {
-    addVitePlugin(() => vite(options))
-    addWebpackPlugin(() => webpack(options))
+    addVitePlugin(() => vite(options));
+    addWebpackPlugin(() => webpack(options));
 
     // ...
   },
-})
+});

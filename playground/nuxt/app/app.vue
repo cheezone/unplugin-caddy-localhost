@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { message } from './main'
+import { message } from './main';
 </script>
 
 <template>

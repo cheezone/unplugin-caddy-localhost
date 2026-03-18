@@ -1,27 +1,41 @@
 {
   "name": "unplugin-starter",
-  "type": "module",
   "version": "0.1.0",
-  "workspaces": [
-    "playground/*"
-  ],
   "description": "",
-  "license": "MIT",
+  "keywords": [
+    "rollup",
+    "transform",
+    "unplugin",
+    "vite",
+    "webpack"
+  ],
   "homepage": "https://github.com/cheezone/unplugin-starter#readme",
+  "bugs": {
+    "url": "https://github.com/cheezone/unplugin-starter/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cheezone/unplugin-starter.git"
   },
-  "bugs": {
-    "url": "https://github.com/cheezone/unplugin-starter/issues"
-  },
-  "keywords": [
-    "unplugin",
-    "vite",
-    "webpack",
-    "rollup",
-    "transform"
+  "workspaces": [
+    "playground/*"
   ],
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
+    }
+  },
   "exports": {
     ".": "./dist/index.mjs",
     "./astro": "./dist/astro.mjs",
@@ -35,31 +49,35 @@
     "./webpack": "./dist/webpack.mjs",
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "typesVersions": {
-    "*": {
-      "*": [
-        "./dist/*",
-        "./*"
-      ]
-    }
-  },
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown -w",
-    "lint": "eslint .",
-    "prepare": "npx simple-git-hooks",
+    "build": "vp pack",
+    "dev": "vp pack -w",
+    "lint": "vp lint .",
+    "prepare": "vp config",
     "play:nuxt": "bun run --cwd playground/nuxt dev",
     "play:vite": "bun run --cwd playground/vite dev",
     "prepublishOnly": "bun run build",
     "release": "bumpp && bun publish",
     "start": "tsx src/index.ts",
-    "test": "vitest"
+    "test": "vp test"
+  },
+  "dependencies": {
+    "unplugin": "^3.0.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^7.7.3",
+    "@nuxt/kit": "^4.4.2",
+    "@nuxt/schema": "^4.4.2",
+    "@types/node": "^25.5.0",
+    "bumpp": "^11.0.1",
+    "nodemon": "^3.1.14",
+    "rollup": "^4.59.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "webpack": "^5.105.4"
   },
   "peerDependencies": {
     "@farmfe/core": ">=1",
@@ -93,27 +111,5 @@
       "optional": true
     }
   },
-  "dependencies": {
-    "unplugin": "^3.0.0"
-  },
-  "devDependencies": {
-    "@antfu/eslint-config": "^7.7.3",
-    "@nuxt/kit": "^4.4.2",
-    "@nuxt/schema": "^4.4.2",
-    "@types/node": "^25.5.0",
-    "bumpp": "^11.0.1",
-    "eslint": "^10.0.3",
-    "nodemon": "^3.1.14",
-    "rollup": "^4.59.0",
-    "simple-git-hooks": "^2.13.1",
-    "tsdown": "^0.21.4",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.0",
-    "vitest": "^4.1.0",
-    "webpack": "^5.105.4"
-  },
-  "simple-git-hooks": {
-    "pre-commit": "bun run lint -- --fix && git add -u"
-  }
+  "packageManager": "pnpm@10.32.1"
 }

@@ -15,10 +15,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: '22'
+          cache: true
 
-      - run: bun install --frozen-lockfile
+      - run: vp install
 
-      - run: bunx changelogithub
+      - run: vp dlx changelogithub
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
