@@ -57,10 +57,29 @@ jobs:
           CFG="$(mktemp)"
           cat >"$CFG" <<'EOF'
           {
-            admin 127.0.0.1:2019
-          }
-          :443 {
-            respond "caddy-ci"
+            "admin": {
+              "listen": "127.0.0.1:2019"
+            },
+            "apps": {
+              "http": {
+                "servers": {
+                  "ci": {
+                    "listen": [":443"],
+                    "routes": [
+                      {
+                        "handle": [
+                          {
+                            "handler": "static_response",
+                            "body": "caddy-ci",
+                            "status_code": 200
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
           }
           EOF
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then

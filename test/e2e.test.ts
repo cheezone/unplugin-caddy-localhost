@@ -100,12 +100,12 @@ describe('e2e', () => {
       console.warn('[e2e CI] 请求使用 127.0.0.1:443 + Host，不依赖 DNS；rejectUnauthorized=false');
     }
 
-    nuxtProc = spawnVp(['pm', '-C', 'playground/nuxt', 'run', 'dev'], rootDir, {
+    nuxtProc = spawnVp(['exec', 'nuxt', 'dev'], path.join(rootDir, 'playground/nuxt'), {
       ...process.env,
       CADDY_HOST: nuxtHost,
     });
 
-    viteProc = spawnVp(['pm', '-C', 'playground/vite', 'run', 'dev'], rootDir, {
+    viteProc = spawnVp(['dev'], path.join(rootDir, 'playground/vite'), {
       ...process.env,
       CADDY_HOST: viteHost,
     });
