@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
 const rootDir = path.resolve(__dirname, '..');
 const E2E_MAGIC = '8712';
-const vpBin = process.platform === 'win32' ? 'vp.cmd' : 'vp';
+const vpBin = 'vp';
 const HTTPS_PORT = process.platform === 'win32' && process.env.CI ? 8443 : 443;
 
 async function fetchHttps(host: string, ms = 8000): Promise<{ statusCode: number; text: string }> {
@@ -66,20 +66,28 @@ async function waitReady(host: string, timeout = 50_000, delay = 15_000): Promis
 }
 
 function spawnVp(args: string[], cwd: string, env?: NodeJS.ProcessEnv) {
-  return spawn(vpBin, args, {
+  const stdio: Exclude<Parameters<typeof spawn>[2], undefined>['stdio'] = ['ignore', 'pipe', 'pipe'];
+  const options = {
     cwd,
     env: env ?? process.env,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    // Windows 上直接 spawn .cmd 偶发 EINVAL；走 shell 更稳
-    shell: process.platform === 'win32',
-  });
+    stdio,
+  };
+
+  // Windows CI：不要直接 spawn `vp.cmd`/`vp`，容易遇到 EINVAL（.cmd/PATHEXT/参数转义差异）。
+  // 显式走 cmd.exe /c 最稳。
+  if (process.platform === 'win32') {
+    const comspec = process.env.ComSpec ?? 'cmd.exe';
+    return spawn(comspec, ['/d', '/s', '/c', vpBin, ...args], options);
+  }
+
+  return spawn(vpBin, args, options);
 }
 
 describe('e2e', () => {
   const nuxtHost = `nuxt.${randomUUID()}.localhost`;
   const viteHost = `vite.${randomUUID()}.localhost`;
-  let nuxtProc: ReturnType<typeof spawn>;
-  let viteProc: ReturnType<typeof spawn>;
+  let nuxtProc: ReturnType<typeof spawn> | undefined;
+  let viteProc: ReturnType<typeof spawn> | undefined;
 
   beforeAll(async () => {
     if (process.env.CI) {
@@ -117,8 +125,8 @@ describe('e2e', () => {
 
     const nuxtStderr: Buffer[] = [];
     const viteStderr: Buffer[] = [];
-    nuxtProc.stderr?.on('data', (c: Buffer) => nuxtStderr.push(c));
-    viteProc.stderr?.on('data', (c: Buffer) => viteStderr.push(c));
+    nuxtProc?.stderr?.on('data', (c: Buffer) => nuxtStderr.push(c));
+    viteProc?.stderr?.on('data', (c: Buffer) => viteStderr.push(c));
 
     try {
       await Promise.all([waitReady(nuxtHost, 55_000, 22_000), waitReady(viteHost, 55_000, 12_000)]);
