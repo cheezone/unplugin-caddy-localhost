@@ -9,8 +9,6 @@ const rootDir = path.resolve(__dirname, '..');
 const E2E_MAGIC = '8712';
 const vpBin = 'vp';
 const HTTPS_PORT = process.platform === 'win32' && process.env.CI ? 8443 : 443;
-const isWinCi = process.platform === 'win32' && Boolean(process.env.CI);
-const describeE2e = isWinCi ? describe.skip : describe;
 
 async function fetchHttps(host: string, ms = 8000): Promise<{ statusCode: number; text: string }> {
   const opts: https.RequestOptions = {
@@ -89,7 +87,7 @@ function spawnVp(args: string[], cwd: string, env?: NodeJS.ProcessEnv) {
   return spawn(vpBin, args, options);
 }
 
-describeE2e('e2e', () => {
+describe('e2e', () => {
   const nuxtHost = `nuxt.${randomUUID()}.localhost`;
   const viteHost = `vite.${randomUUID()}.localhost`;
   let nuxtProc: ReturnType<typeof spawn> | undefined;
