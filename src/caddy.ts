@@ -26,6 +26,11 @@ function desiredHttpsPort(): number {
   return process.platform === 'win32' && process.env.CI ? 8443 : 443;
 }
 
+function desiredHttpPort(): number {
+  // Windows CI 上绑定 :80 可能被拒绝（无管理员权限）
+  return process.platform === 'win32' && process.env.CI ? 8080 : 80;
+}
+
 function httpsServerName(port: number): string {
   return port === 443 ? '_vite_443' : `_vite_${port}`;
 }
@@ -95,11 +100,14 @@ function isPortInUse(port: number): Promise<boolean> {
 
 /** 仅监听一个 https 端口（默认 443），避免在 Windows 等环境绑定 :80 被拒绝（需管理员） */
 function minimalCaddyConfig(httpsPort: number) {
+  const httpPort = desiredHttpPort();
   const serverName = httpsServerName(httpsPort);
   return {
     admin: { listen: 'tcp/localhost:2019' },
     apps: {
       http: {
+        http_port: httpPort,
+        https_port: httpsPort,
         servers: {
           [serverName]: { listen: [`:${httpsPort}`], routes: [] },
         },
@@ -187,6 +195,8 @@ function routeMatchesHost(route: { match?: Array<{ host?: string[] }> }, host: s
   return matches.some((m) => Array.isArray(m?.host) && m.host!.includes(host));
 }
 
+type CaddyRouteLike = { match?: Array<{ host?: string[] }>; [k: string]: unknown };
+
 export async function setRouteForHost(
   caddyAdmin: string,
   serverName: string,
@@ -205,10 +215,10 @@ export async function setRouteForHost(
     await appendRoute(caddyAdmin, serverName, host, dial);
     return;
   }
-  const routes = Array.isArray(server.routes) ? [...server.routes] : [];
-  const newRoutes = routes.filter(
-    (r: { match?: Array<{ host?: string[] }> }) => !routeMatchesHost(r, host),
-  );
+  const routes: CaddyRouteLike[] = Array.isArray(server.routes)
+    ? (server.routes as CaddyRouteLike[])
+    : [];
+  const newRoutes = routes.filter((r) => !routeMatchesHost(r, host));
   newRoutes.push({
     match: [{ host: [host] }],
     handle: [
@@ -249,9 +259,7 @@ export async function removeRouteForHost(
     | undefined;
   const server = serverName ? httpApps?.servers?.[serverName] : undefined;
   if (!server || !Array.isArray(server.routes)) return;
-  const newRoutes = server.routes.filter(
-    (r: { match?: Array<{ host?: string[] }> }) => !routeMatchesHost(r, host),
-  );
+  const newRoutes = (server.routes as CaddyRouteLike[]).filter((r) => !routeMatchesHost(r, host));
   if (newRoutes.length === server.routes.length) return;
   await caddyApi(caddyAdmin, `/config/apps/http/servers/${serverName}`, 'PATCH', {
     ...server,
