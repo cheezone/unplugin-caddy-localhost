@@ -70,6 +70,8 @@ function spawnVp(args: string[], cwd: string, env?: NodeJS.ProcessEnv) {
     cwd,
     env: env ?? process.env,
     stdio: ['ignore', 'pipe', 'pipe'],
+    // Windows 上直接 spawn .cmd 偶发 EINVAL；走 shell 更稳
+    shell: process.platform === 'win32',
   });
 }
 
@@ -136,8 +138,8 @@ describe('e2e', () => {
   }, 70_000);
 
   afterAll(() => {
-    nuxtProc.kill('SIGTERM');
-    viteProc.kill('SIGTERM');
+    nuxtProc?.kill('SIGTERM');
+    viteProc?.kill('SIGTERM');
   });
 
   it('nuxt 域名反代到应用且内容含魔数', async () => {
