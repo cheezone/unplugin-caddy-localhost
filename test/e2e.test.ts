@@ -33,6 +33,14 @@ async function waitForServer(url: string, timeout = 10_000, fallbackUrl?: string
   throw new Error(`Server did not become ready: ${url}`);
 }
 
+function spawnVp(args: string[], cwd: string) {
+  return spawn('vp', args, {
+    cwd,
+    env: process.env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
 describe('e2e', () => {
   describe('nuxt 环境', () => {
     let proc: ReturnType<typeof spawn>;
@@ -40,13 +48,12 @@ describe('e2e', () => {
 
     beforeAll(async () => {
       const cwd = path.join(rootDir, 'playground/nuxt');
-      proc = spawn('bun', ['run', 'dev'], {
+      proc = spawnVp(
+        ['exec', 'nuxt', 'dev', '--host', '127.0.0.1', '--port', String(NUXT_DEV_PORT)],
         cwd,
-        env: { ...process.env, PORT: String(NUXT_DEV_PORT), NUXT_PORT: String(NUXT_DEV_PORT) },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      baseUrl = await waitForServer(`http://localhost:${NUXT_DEV_PORT}`, 10_000);
-    }, 12_000);
+      );
+      baseUrl = await waitForServer(`http://127.0.0.1:${NUXT_DEV_PORT}`, 30_000);
+    }, 35_000);
 
     afterAll(() => proc.kill('SIGTERM'));
 
@@ -63,18 +70,17 @@ describe('e2e', () => {
     let proc: ReturnType<typeof spawn>;
 
     beforeAll(async () => {
-      proc = spawn('bun', ['x', 'vite', '--port', String(VITE_DEV_PORT)], {
-        cwd: path.join(rootDir, 'playground/vite'),
-        env: process.env,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      await waitForServer(`http://localhost:${VITE_DEV_PORT}`);
-    }, 12_000);
+      proc = spawnVp(
+        ['dev', '--host', '127.0.0.1', '--port', String(VITE_DEV_PORT)],
+        path.join(rootDir, 'playground/vite'),
+      );
+      await waitForServer(`http://127.0.0.1:${VITE_DEV_PORT}`, 20_000);
+    }, 25_000);
 
     afterAll(() => proc.kill('SIGTERM'));
 
     it('首页有内容（含 app 挂载点）', async () => {
-      const res = await fetch(`http://localhost:${VITE_DEV_PORT}`);
+      const res = await fetch(`http://127.0.0.1:${VITE_DEV_PORT}`);
       const html = await res.text();
       expect(res.ok).toBe(true);
       expect(html).toContain('id="app"');

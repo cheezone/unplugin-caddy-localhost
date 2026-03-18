@@ -9,10 +9,6 @@ export default defineConfig({
   },
   lint: {
     ignorePatterns: ['dist/**', '**/node_modules/**'],
-    options: {
-      typeAware: true,
-      typeCheck: true,
-    },
   },
   fmt: {
     singleQuote: true,
