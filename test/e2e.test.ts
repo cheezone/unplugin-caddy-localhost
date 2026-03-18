@@ -8,11 +8,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 const rootDir = path.resolve(__dirname, '..');
 const E2E_MAGIC = '8712';
 const vpBin = process.platform === 'win32' ? 'vp.cmd' : 'vp';
+const HTTPS_PORT = process.platform === 'win32' && process.env.CI ? 8443 : 443;
 
 async function fetchHttps(host: string, ms = 8000): Promise<{ statusCode: number; text: string }> {
   const opts: https.RequestOptions = {
     hostname: '127.0.0.1',
-    port: 443,
+    port: HTTPS_PORT,
     path: '/',
     method: 'GET',
     rejectUnauthorized: false,
@@ -97,7 +98,9 @@ describe('e2e', () => {
       } catch (e) {
         console.warn('[e2e CI] .localhost 解析失败:', e);
       }
-      console.warn('[e2e CI] 请求使用 127.0.0.1:443 + Host，不依赖 DNS；rejectUnauthorized=false');
+      console.warn(
+        `[e2e CI] 请求使用 127.0.0.1:${HTTPS_PORT} + Host，不依赖 DNS；rejectUnauthorized=false`,
+      );
     }
 
     nuxtProc = spawnVp(['exec', 'nuxt', 'dev'], path.join(rootDir, 'playground/nuxt'), {

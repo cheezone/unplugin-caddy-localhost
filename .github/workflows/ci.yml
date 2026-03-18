@@ -47,6 +47,10 @@ jobs:
           sudo apt-get install -y caddy
           sudo setcap 'cap_net_bind_service=+ep' /usr/bin/caddy 2>/dev/null || true
 
+      - name: Install Caddy (Windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install caddy -y
+
       - name: Install Caddy (macOS)
         if: matrix.os == 'macos-latest'
         run: brew install caddy

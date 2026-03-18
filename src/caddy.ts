@@ -21,7 +21,14 @@ export const CADDY_ADMIN = 'http://127.0.0.1:2019';
 /** 允许 xxx.localhost 或 a.b.localhost 等形式 */
 export const HOST_LOCALHOST_REGEX = /^([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.)+localhost$/;
 
-const VITE_443_SERVER_NAME = '_vite_443';
+function desiredHttpsPort(): number {
+  // Windows CI 不能保证具备绑定 443 的管理员权限；改用非特权端口跑 e2e
+  return process.platform === 'win32' && process.env.CI ? 8443 : 443;
+}
+
+function httpsServerName(port: number): string {
+  return port === 443 ? '_vite_443' : `_vite_${port}`;
+}
 
 export async function caddyApi(
   baseUrl: string,
@@ -86,32 +93,36 @@ function isPortInUse(port: number): Promise<boolean> {
   });
 }
 
-/** 仅监听 :443 的 Caddy 初始配置，避免在 Windows 等环境绑定 :80 被拒绝（需管理员） */
-const CADDY_MINIMAL_CONFIG = {
-  admin: { listen: 'tcp/localhost:2019' },
-  apps: {
-    http: {
-      servers: {
-        [VITE_443_SERVER_NAME]: { listen: [':443'], routes: [] },
+/** 仅监听一个 https 端口（默认 443），避免在 Windows 等环境绑定 :80 被拒绝（需管理员） */
+function minimalCaddyConfig(httpsPort: number) {
+  const serverName = httpsServerName(httpsPort);
+  return {
+    admin: { listen: 'tcp/localhost:2019' },
+    apps: {
+      http: {
+        servers: {
+          [serverName]: { listen: [`:${httpsPort}`], routes: [] },
+        },
       },
     },
-  },
-};
+  };
+}
 
 export async function startCaddyInBackground(
   ctx: { logger?: { warn: (msg: string) => void } } = {},
 ): Promise<ReturnType<typeof spawn> | null> {
-  if (await isPortInUse(443)) {
+  const httpsPort = desiredHttpsPort();
+  if (await isPortInUse(httpsPort)) {
     ctx.logger?.warn(
       pc.yellow(
-        '  443 已被占用但 Caddy Admin API 不可达，可能已有 Caddy 在运行。请确保只运行一个 Caddy（pkill -x caddy 后重新 caddy run），否则会 502。',
+        `  ${httpsPort} 已被占用但 Caddy Admin API 不可达，可能已有 Caddy 在运行。请确保只运行一个 Caddy（pkill -x caddy 后重新 caddy run），否则会 502。`,
       ),
     );
     return null;
   }
   try {
     const configPath = path.join(os.tmpdir(), 'caddy-unplugin-localhost.json');
-    fs.writeFileSync(configPath, JSON.stringify(CADDY_MINIMAL_CONFIG), 'utf8');
+    fs.writeFileSync(configPath, JSON.stringify(minimalCaddyConfig(httpsPort)), 'utf8');
     const child = spawn('caddy', ['run', '--config', configPath], {
       detached: true,
       stdio: 'ignore',
@@ -125,40 +136,38 @@ export async function startCaddyInBackground(
 }
 
 export async function ensureCaddyServer(caddyAdmin: string): Promise<string> {
+  const httpsPort = desiredHttpsPort();
+  const desiredListen = `:${httpsPort}`;
+  const serverName = httpsServerName(httpsPort);
   const config = (await caddyApi(caddyAdmin, '/config/')) as {
     apps?: { http?: { servers?: Record<string, { listen?: string[] }> } };
   } | null;
   const servers = config?.apps?.http?.servers;
   if (servers && typeof servers === 'object') {
     const name = Object.keys(servers).find(
-      (k) => Array.isArray(servers[k].listen) && servers[k].listen!.includes(':443'),
+      (k) => Array.isArray(servers[k].listen) && servers[k].listen!.includes(desiredListen),
     );
     if (name) return name;
   }
-  const newServer = { listen: [':443'], routes: [] };
+  const newServer = { listen: [desiredListen], routes: [] };
   try {
-    await caddyApi(
-      caddyAdmin,
-      `/config/apps/http/servers/${VITE_443_SERVER_NAME}`,
-      'PATCH',
-      newServer,
-    );
-    return VITE_443_SERVER_NAME;
+    await caddyApi(caddyAdmin, `/config/apps/http/servers/${serverName}`, 'PATCH', newServer);
+    return serverName;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '';
     if (HTTP_4XX_REGEX.test(msg)) {
       try {
         await caddyApi(caddyAdmin, '/config/apps', 'PATCH', {
-          http: { servers: { [VITE_443_SERVER_NAME]: newServer } },
+          http: { servers: { [serverName]: newServer } },
         });
-        return VITE_443_SERVER_NAME;
+        return serverName;
       } catch (err2: unknown) {
         const msg2 = err2 instanceof Error ? err2.message : '';
         if (HTTP_500_REGEX.test(msg2)) {
           await caddyApi(caddyAdmin, '/config/', 'PATCH', {
-            apps: { http: { servers: { [VITE_443_SERVER_NAME]: newServer } } },
+            apps: { http: { servers: { [serverName]: newServer } } },
           });
-          return VITE_443_SERVER_NAME;
+          return serverName;
         }
         throw err2;
       }
