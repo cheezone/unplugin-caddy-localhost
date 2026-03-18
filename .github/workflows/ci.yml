@@ -51,10 +51,38 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: brew install caddy
 
+      - name: Start Caddy (CI)
+        run: |
+          set -euo pipefail
+          CFG="$(mktemp)"
+          cat >"$CFG" <<'EOF'
+          {
+            admin 127.0.0.1:2019
+          }
+          :443 {
+            respond "caddy-ci"
+          }
+          EOF
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            sudo nohup caddy run --config "$CFG" >"$RUNNER_TEMP/caddy.log" 2>&1 &
+          else
+            nohup sudo caddy run --config "$CFG" >"$RUNNER_TEMP/caddy.log" 2>&1 &
+          fi
+          for i in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:2019/config/" >/dev/null 2>&1; then
+              echo "Caddy admin ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Caddy admin not ready"; tail -200 "$RUNNER_TEMP/caddy.log" || true
+          exit 1
+        shell: bash
+
       - run: vp install
       - run: vp run build
 
-      # 仅打印 runner 环境（Caddy 在 e2e 里由插件拉起，test 前不做 443/trust 检测）
+      # 仅打印 runner 环境（e2e 走 https://*.localhost:443 + Admin :2019）
       - name: Runner 环境
         run: |
           echo "RUNNER_OS = $RUNNER_OS"
