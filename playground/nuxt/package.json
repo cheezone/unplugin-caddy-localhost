@@ -1,11 +1,11 @@
 {
   "name": "playground-nuxt",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "bun run -- nuxt dev",
-    "build": "bun run -- nuxt build",
-    "preview": "bun run -- nuxt preview"
+    "dev": "vp exec nuxt dev",
+    "build": "vp exec nuxt build",
+    "preview": "vp exec nuxt preview"
   },
   "devDependencies": {
     "nuxt": "^4.0.0"

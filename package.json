@@ -1,27 +1,41 @@
 {
   "name": "unplugin-caddy-localhost",
-  "type": "module",
   "version": "0.1.2",
-  "workspaces": [
-    "playground/*"
-  ],
   "description": "Unplugin: 用 Caddy 把 dev 映射到 https://xxx.localhost",
-  "license": "MIT",
+  "keywords": [
+    "rollup",
+    "transform",
+    "unplugin",
+    "vite",
+    "webpack"
+  ],
   "homepage": "https://github.com/cheezone/unplugin-caddy-localhost#readme",
+  "bugs": {
+    "url": "https://github.com/cheezone/unplugin-caddy-localhost/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cheezone/unplugin-caddy-localhost.git"
   },
-  "bugs": {
-    "url": "https://github.com/cheezone/unplugin-caddy-localhost/issues"
-  },
-  "keywords": [
-    "unplugin",
-    "vite",
-    "webpack",
-    "rollup",
-    "transform"
+  "workspaces": [
+    "playground/*"
   ],
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
+    }
+  },
   "exports": {
     ".": "./dist/index.mjs",
     "./astro": "./dist/astro.mjs",
@@ -35,49 +49,17 @@
     "./webpack": "./dist/webpack.mjs",
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "typesVersions": {
-    "*": {
-      "*": [
-        "./dist/*",
-        "./*"
-      ]
-    }
-  },
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown -w",
-    "lint": "eslint .",
-    "prepare": "npx simple-git-hooks",
-    "play:nuxt": "bun run --cwd playground/nuxt dev",
-    "play:vite": "bun run --cwd playground/vite dev",
-    "prepublishOnly": "bun run build",
-    "release": "bumpp && bun publish",
+    "build": "vp pack",
+    "dev": "vp pack -w",
+    "lint": "vp lint .",
+    "prepare": "vp config",
+    "play:nuxt": "vp pm -C playground/nuxt run dev",
+    "play:vite": "vp pm -C playground/vite run dev",
+    "prepublishOnly": "vp run build",
+    "release": "bumpp && vp pm publish",
     "start": "tsx src/index.ts",
-    "test": "vitest"
-  },
-  "peerDependencies": {
-    "@farmfe/core": ">=1",
-    "@nuxt/kit": "^3",
-    "@nuxt/schema": "^3",
-    "esbuild": "*",
-    "rollup": "^3",
-    "vite": ">=3",
-    "webpack": "^4 || ^5"
-  },
-  "peerDependenciesMeta": {
-    "@farmfe/core": { "optional": true },
-    "@nuxt/kit": { "optional": true },
-    "@nuxt/schema": { "optional": true },
-    "esbuild": { "optional": true },
-    "rollup": { "optional": true },
-    "vite": { "optional": true },
-    "webpack": { "optional": true }
+    "test": "vp test"
   },
   "dependencies": {
     "picocolors": "^1.1.1",
@@ -89,19 +71,46 @@
     "@nuxt/schema": "^4.4.2",
     "@types/node": "^25.5.0",
     "bumpp": "^11.0.1",
-    "eslint": "^10.0.3",
     "nodemon": "^3.1.14",
     "rollup": "^4.59.0",
-    "simple-git-hooks": "^2.13.1",
-    "tree-kill": "^1.2.2",
-    "tsdown": "^0.21.4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vite": "^8.0.0",
-    "vitest": "^4.1.0",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "webpack": "^5.105.4"
   },
-  "simple-git-hooks": {
-    "pre-commit": "bun run lint -- --fix && git add -u"
-  }
+  "peerDependencies": {
+    "@farmfe/core": ">=1",
+    "@nuxt/kit": "^3",
+    "@nuxt/schema": "^3",
+    "esbuild": "*",
+    "rollup": "^3",
+    "vite": ">=3",
+    "webpack": "^4 || ^5"
+  },
+  "peerDependenciesMeta": {
+    "@farmfe/core": {
+      "optional": true
+    },
+    "@nuxt/kit": {
+      "optional": true
+    },
+    "@nuxt/schema": {
+      "optional": true
+    },
+    "esbuild": {
+      "optional": true
+    },
+    "rollup": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
+  },
+  "packageManager": "pnpm@10.32.1"
 }

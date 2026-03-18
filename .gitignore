@@ -79,6 +79,9 @@ dist
 
 # IDE
 .idea
+.agents/
+.vite-hooks/
+.vp-app-build/
 
 # macOS
 .DS_Store

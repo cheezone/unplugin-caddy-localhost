@@ -7,48 +7,34 @@ on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
 
 jobs:
-  lint:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set node
-        uses: actions/setup-node@v4
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: lts/*
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install
-        run: bun install --frozen-lockfile
-
-      - name: Lint
-        run: bun run lint
+          node-version: '22'
+          cache: true
+      - run: vp install
+      - run: vp check
 
   test:
     runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
-        node: [lts/*]
         os: [ubuntu-latest, macos-latest]
       fail-fast: false
-
     steps:
       - uses: actions/checkout@v4
-      - name: Set node ${{ matrix.node }}
-        uses: actions/setup-node@v4
+      - uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: ${{ matrix.node }}
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+          node-version: '22'
+          cache: true
 
       - name: Install Caddy (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -65,11 +51,8 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: brew install caddy
 
-      - name: Install
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
+      - run: vp install
+      - run: vp run build
 
       # 仅打印 runner 环境（Caddy 在 e2e 里由插件拉起，test 前不做 443/trust 检测）
       - name: Runner 环境
@@ -78,5 +61,4 @@ jobs:
           node -e "require('dns').lookup('e2e.localhost', (e, r) => console.log('.localhost 解析:', e ? e.code : r));" && sleep 1
         shell: bash
 
-      - name: Test
-        run: bun test
+      - run: vp test
