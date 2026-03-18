@@ -50,10 +50,32 @@ jobs:
       - name: Install Caddy (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install caddy -y
-          echo "C:\\ProgramData\\chocolatey\\bin" >> $env:GITHUB_PATH
+          $ErrorActionPreference = 'Stop'
+
+          # 1) 优先用 Chocolatey（但社区源偶发 504，会导致 CI 不稳定）
+          try {
+            choco install caddy -y --no-progress
+            echo "C:\\ProgramData\\chocolatey\\bin" >> $env:GITHUB_PATH
+          } catch {
+            Write-Host "Chocolatey 安装 caddy 失败，尝试直接下载官方构建。"
+          }
+
+          # 2) 若仍不可用，则直接下载官方 Windows amd64 包并加入 PATH
+          if (-not (Get-Command caddy -ErrorAction SilentlyContinue)) {
+            $dest = Join-Path $env:RUNNER_TEMP 'caddy-bin'
+            New-Item -ItemType Directory -Force -Path $dest | Out-Null
+
+            $zip = Join-Path $dest 'caddy.zip'
+            $url = 'https://caddyserver.com/api/download?os=windows&arch=amd64&p=github.com%2Fcaddyserver%2Fcertmagic'
+            Invoke-WebRequest -Uri $url -OutFile $zip
+            Expand-Archive -Path $zip -DestinationPath $dest -Force
+
+            echo $dest >> $env:GITHUB_PATH
+          }
+
           where caddy
           caddy version
+        shell: pwsh
 
       - name: Install Caddy (macOS)
         if: matrix.os == 'macos-latest'
