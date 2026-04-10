@@ -13,6 +13,7 @@ import {
   ensureCaddyServer,
   isCaddyReachable,
   removeRouteForHost,
+  resolveDefaultHostFromProject,
   setRouteForHost,
   startCaddyInBackground,
   toUpstreamDial,
@@ -21,11 +22,7 @@ import {
 import { PLUGIN_NAME } from './constants';
 
 const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _meta) => {
-  if (!options?.host) {
-    throw new Error('[unplugin-caddy-localhost] options.host 必填，例如 "frontend.localhost"');
-  }
-  const { host, caddyAdmin: caddyAdminOption, autoStartCaddy = true } = options;
-  assertLocalhostHost(host);
+  const { host: hostOption, caddyAdmin: caddyAdminOption, autoStartCaddy = true } = options;
   const caddyAdmin = caddyAdminOption ?? CADDY_ADMIN;
 
   return {
@@ -33,6 +30,8 @@ const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}, _me
     vite: {
       apply: 'serve',
       configureServer(server): void {
+        const host = hostOption ?? resolveDefaultHostFromProject(server.config.root);
+        assertLocalhostHost(host);
         const httpServer = server.httpServer;
         const logger = server.config.logger;
         let registeredServerName: string | null = null;

@@ -1,12 +1,14 @@
 import type { Nuxt } from '@nuxt/schema';
 import type { Options } from './types';
 import { defineNuxtModule } from '@nuxt/kit';
+import pc from 'picocolors';
 import {
   assertLocalhostHost,
   CADDY_ADMIN,
-  DEV_LOCK_POLL_MS,
-  DEV_LOCK_TIMEOUT_MS,
+  CADDY_READY_POLL_MS,
+  CADDY_READY_TIMEOUT_MS,
   ensureCaddyServer,
+  resolveDefaultHostFromProject,
   setRouteForHost,
   startCaddyInBackground,
   waitForCaddy,
@@ -36,6 +38,22 @@ function getLoggerFromNuxt(nuxt: Nuxt): LoggerShape | undefined {
       (lo.warn as (m: string) => void)(msg);
     },
   };
+}
+
+function logInfo(logger: LoggerShape | undefined, msg: string): void {
+  if (logger) {
+    logger.info(msg);
+    return;
+  }
+  console.info(msg);
+}
+
+function logWarn(logger: LoggerShape | undefined, msg: string): void {
+  if (logger) {
+    logger.warn(msg);
+    return;
+  }
+  console.warn(msg);
 }
 
 /** 从 listen 的 listener 取 url，得到 host:port 作为 Caddy upstream dial */
@@ -69,21 +87,18 @@ export default defineNuxtModule<ModuleOptions>({
     autoStartCaddy: true,
   },
   setup(rawOptions, nuxt: Nuxt) {
+    const rootDir = nuxt.options.rootDir;
     const logger = getLoggerFromNuxt(nuxt);
     const options: ModuleOptions = {
       autoStartCaddy: true,
       ...rawOptions,
     };
-
-    assertLocalhostHost(options.host);
-    const log = (msg: string): void => {
-      if (logger) logger.info(msg);
-    };
-    const warn = (msg: string): void => {
-      if (logger) logger.warn(msg);
-      else console.warn(msg);
-    };
-    log(`[unplugin-caddy-localhost] 已加载，host=${options.host}`);
+    const host = options.host ?? resolveDefaultHostFromProject(rootDir);
+    assertLocalhostHost(host);
+    const log = (msg: string): void => logInfo(logger, msg);
+    const warn = (msg: string): void => logWarn(logger, msg);
+    const caddyUrl = `https://${host}`;
+    const caddyLine = `  ${pc.green('➜')}  ${pc.bold('Caddy')}:   ${pc.cyan(caddyUrl)}`;
 
     const caddyAdmin = (options.caddyAdmin ?? CADDY_ADMIN).replace(TRAILING_SLASH_REGEX, '');
 
@@ -92,8 +107,8 @@ export default defineNuxtModule<ModuleOptions>({
       if (options.autoStartCaddy !== false) {
         await startCaddyInBackground({ logger });
         return waitForCaddy(caddyAdmin, {
-          intervalMs: DEV_LOCK_POLL_MS,
-          maxAttempts: Math.ceil(DEV_LOCK_TIMEOUT_MS / DEV_LOCK_POLL_MS),
+          intervalMs: CADDY_READY_POLL_MS,
+          maxAttempts: Math.ceil(CADDY_READY_TIMEOUT_MS / CADDY_READY_POLL_MS),
         });
       }
       return false;
@@ -106,11 +121,11 @@ export default defineNuxtModule<ModuleOptions>({
         return;
       }
       const serverName = await ensureCaddyServer(caddyAdmin);
-      await setRouteForHost(caddyAdmin, serverName, options.host, dial);
-      log(`[unplugin-caddy-localhost] 已将 https://${options.host} 反代到 ${dial}`);
+      await setRouteForHost(caddyAdmin, serverName, host, dial);
     };
 
     let isRegistering = false;
+    let caddyLinePrinted = false;
     nuxt.hook('listen', (first: unknown, second?: unknown) => {
       const listener = second ?? first;
       const dial = dialFromListenListener(listener);
@@ -121,12 +136,16 @@ export default defineNuxtModule<ModuleOptions>({
       if (isRegistering) {
         return;
       }
+      if (!caddyLinePrinted) {
+        caddyLinePrinted = true;
+        log(caddyLine);
+      }
       isRegistering = true;
       const run = (): void => {
         registerRoute(dial)
           .catch((err: unknown) => {
             const msg = err instanceof Error ? err.message : String(err);
-            warn(`[unplugin-caddy-localhost] 注册 https://${options.host} 失败: ${msg}`);
+            warn(`[unplugin-caddy-localhost] 注册 https://${host} 失败: ${msg}`);
           })
           .finally(() => {
             isRegistering = false;

@@ -13,16 +13,45 @@ const TRAILING_SLASH_REGEX = /\/+$/;
 const HTTP_4XX_REGEX = /4\d{2}/;
 const HTTP_500_REGEX = /500/;
 
-export const DEV_LOCK_POLL_MS = 200;
-export const DEV_LOCK_TIMEOUT_MS = 20000;
+export const CADDY_READY_POLL_MS = 200;
+export const CADDY_READY_TIMEOUT_MS = 20000;
 
 export const CADDY_ADMIN = 'http://127.0.0.1:2019';
 
 /** 允许 xxx.localhost 或 a.b.localhost 等形式 */
 export const HOST_LOCALHOST_REGEX = /^([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.)+localhost$/;
 
-function desiredHttpsPort(): number {
-  // Windows CI 不能保证具备绑定 443 的管理员权限；改用非特权端口跑 e2e
+function normalizeProjectNameToHost(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, '')
+    .replace(/\//g, '-')
+    .replace(/[^a-z0-9.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^\.+|\.+$/g, '')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function resolveDefaultHostFromProject(rootDir: string): `${string}.localhost` {
+  const pkgPath = path.join(rootDir, 'package.json');
+  let name = '';
+  try {
+    const raw = fs.readFileSync(pkgPath, 'utf8');
+    const parsed = JSON.parse(raw) as { name?: string };
+    if (typeof parsed.name === 'string') name = parsed.name;
+  } catch {
+    // ignore and fallback to error below
+  }
+  const normalized = normalizeProjectNameToHost(name);
+  const host = `${normalized}.localhost`;
+  if (normalized && HOST_LOCALHOST_REGEX.test(host)) return host;
+  throw new Error(
+    '[unplugin-caddy-localhost] 未传 options.host，且无法从 package.json 的 name 推导默认域名，请显式设置 host。',
+  );
+}
+
+function desiredHttpsPort(): number { // Windows CI 不能保证具备绑定 443 的管理员权限；改用非特权端口跑 e2e
   return process.platform === 'win32' && process.env.CI ? 8443 : 443;
 }
 
@@ -270,7 +299,7 @@ export async function removeRouteForHost(
 export function assertLocalhostHost(host: string): void {
   if (!host || typeof host !== 'string') {
     throw new Error(
-      '[unplugin-caddy-localhost] options.host 必填，允许 xxx.localhost 形式，例如 "frontend.localhost"',
+      '[unplugin-caddy-localhost] options.host 为空或无效，允许 xxx.localhost 形式，例如 "frontend.localhost"',
     );
   }
   if (!HOST_LOCALHOST_REGEX.test(host)) {

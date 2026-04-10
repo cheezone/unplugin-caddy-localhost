@@ -2,7 +2,7 @@
 
 [![NPM version](https://img.shields.io/npm/v/unplugin-caddy-localhost?color=a1b858&label=)](https://www.npmjs.com/package/unplugin-caddy-localhost)
 
-[Unplugin](https://unplugin.unjs.io/) 约定：用 Caddy 把 dev 映射到 `https://xxx.localhost`，host 须为 `xxx.localhost` 形式（如 `frontend.localhost`）。
+[Unplugin](https://unplugin.unjs.io/) 约定：用 Caddy 把 dev 映射到 `https://xxx.localhost`。`host` 可省略（默认从项目名推导），显式传入时须为 `xxx.localhost` 形式（如 `frontend.localhost`）。
 
 ## 前置条件
 
@@ -26,19 +26,19 @@ npm i -D unplugin-caddy-localhost
 import caddyLocalhost from 'unplugin-caddy-localhost/vite';
 
 export default defineConfig({
-  plugins: [caddyLocalhost({ host: 'frontend.localhost' })],
+  plugins: [caddyLocalhost()],
 });
 ```
 
-- **host**（必填）：须为 `xxx.localhost`。
+- **host**（可选）：不传时自动读取项目 `package.json` 的 `name`，推导为 `<name>.localhost`（例如 `cheez-tech` → `cheez-tech.localhost`）；传入时须为 `xxx.localhost`。
 - **caddyAdmin**（可选）：Admin API 地址，默认 `http://127.0.0.1:2019`。
 - **autoStartCaddy**（可选）：API 不可达时是否自动执行 `caddy run`，默认 true。若 443 已被占用会提示可能已有 Caddy 在跑，请只保留一个实例。
 
 Caddy 被关掉后插件会提示；用户再次 `caddy run` 后会自动重新注册，无需重启 Vite。
 
-## Nuxt / Vite middleware 模式
+## Nuxt
 
-在 Nuxt 下没有 `httpServer`，端口来自统一的锁文件。请在 `nuxt.config` 的 `modules` 里加上 `'unplugin-singleton/nuxt'`，该模块会写入 `.dev/dev.lock.json`（与 Vite 下格式一致），本插件会轮询该文件拿到端口再向 Caddy 注册。未加模块时会用回退端口并打警告。
+Nuxt 模块在 `listen` 时从开发服务器 listener 解析地址，再向 Caddy 注册反代，与 Vite 下基于 `httpServer` 的行为一致，**不**读取 `.dev` 或锁文件。
 
 ## 开发
 
