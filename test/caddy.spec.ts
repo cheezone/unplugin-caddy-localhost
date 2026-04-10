@@ -1,9 +1,17 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { assertLocalhostHost, HOST_LOCALHOST_REGEX, toUpstreamDial } from '../src/caddy';
+import {
+  assertLocalhostHost,
+  HOST_LOCALHOST_REGEX,
+  resolveDefaultHostFromProject,
+  toUpstreamDial,
+} from '../src/caddy';
 
 describe('assertLocalhostHost', () => {
   it('空字符串抛错', () => {
-    expect(() => assertLocalhostHost('')).toThrow(/options\.host 必填/);
+    expect(() => assertLocalhostHost('')).toThrow(/options\.host 为空或无效/);
   });
 
   it('非 xxx.localhost 形式抛错', () => {
@@ -52,14 +60,35 @@ describe('toUpstreamDial', () => {
 });
 
 const mockMeta = { framework: 'vite' as const };
+const tmpRoot = path.join(os.tmpdir(), `unplugin-caddy-localhost-test-${Date.now()}`);
+
+describe('resolveDefaultHostFromProject', () => {
+  it('从 package name 推导默认 host', () => {
+    const root = path.join(tmpRoot, 'with-name');
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ name: '@cheez/tech-web' }, null, 2),
+      'utf8',
+    );
+    expect(resolveDefaultHostFromProject(root)).toBe('cheez-tech-web.localhost');
+  });
+
+  it('缺少 package name 时抛错', () => {
+    const root = path.join(tmpRoot, 'without-name');
+    fs.mkdirSync(root, { recursive: true });
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({}, null, 2), 'utf8');
+    expect(() => resolveDefaultHostFromProject(root)).toThrow(
+      /无法从 package\.json 的 name 推导默认域名/,
+    );
+  });
+});
 
 describe('unpluginFactory', () => {
-  it('无 options.host 时抛错', async () => {
+  it('无 options.host 时不抛错（延迟到 configureServer 解析默认 host）', async () => {
     const { unpluginFactory } = await import('../src/index');
-    expect(() => unpluginFactory(undefined, mockMeta)).toThrow(/options\.host 必填/);
-    expect(() => unpluginFactory({} as import('../src/types').Options, mockMeta)).toThrow(
-      /options\.host 必填/,
-    );
+    expect(() => unpluginFactory(undefined, mockMeta)).not.toThrow();
+    expect(() => unpluginFactory({} as import('../src/types').Options, mockMeta)).not.toThrow();
   });
 
   it('有 host 时返回带 name 和 vite 的插件', async () => {
