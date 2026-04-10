@@ -51,7 +51,8 @@ export function resolveDefaultHostFromProject(rootDir: string): `${string}.local
   );
 }
 
-function desiredHttpsPort(): number { // Windows CI 不能保证具备绑定 443 的管理员权限；改用非特权端口跑 e2e
+function desiredHttpsPort(): number {
+  // Windows CI 不能保证具备绑定 443 的管理员权限；改用非特权端口跑 e2e
   return process.platform === 'win32' && process.env.CI ? 8443 : 443;
 }
 
