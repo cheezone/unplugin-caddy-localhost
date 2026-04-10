@@ -1,6 +1,6 @@
 {
   "name": "unplugin-caddy-localhost",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Unplugin: 用 Caddy 把 dev 映射到 https://xxx.localhost",
   "keywords": [
     "rollup",
